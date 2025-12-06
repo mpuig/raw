@@ -1,0 +1,277 @@
+"""Telemetry sink implementations."""
+
+import json
+import sys
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, TextIO
+
+from raw_runtime.protocols.telemetry import EventSeverity
+
+
+@dataclass
+class MetricPoint:
+    """A single metric data point."""
+
+    name: str
+    value: float
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    tags: dict[str, str] = field(default_factory=dict)
+    unit: str | None = None
+
+
+@dataclass
+class TelemetryEvent:
+    """A structured telemetry event."""
+
+    name: str
+    severity: EventSeverity = EventSeverity.INFO
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    message: str | None = None
+    data: dict[str, Any] = field(default_factory=dict)
+    tags: dict[str, str] = field(default_factory=dict)
+
+
+class NullSink:
+    """Telemetry sink that discards all data.
+
+    Useful for testing or when telemetry is disabled.
+    """
+
+    def log_metric(
+        self,
+        name: str,
+        value: float,
+        tags: dict[str, str] | None = None,
+        unit: str | None = None,
+    ) -> None:
+        pass
+
+    def log_event(
+        self,
+        name: str,
+        severity: EventSeverity = EventSeverity.INFO,
+        message: str | None = None,
+        data: dict[str, Any] | None = None,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        pass
+
+    def flush(self) -> None:
+        pass
+
+
+class ConsoleSink:
+    """Telemetry sink that prints to console.
+
+    Uses simple formatting for human readability.
+    """
+
+    def __init__(
+        self,
+        output: TextIO | None = None,
+        min_severity: EventSeverity = EventSeverity.INFO,
+    ) -> None:
+        """Initialize console sink.
+
+        Args:
+            output: Output stream (defaults to stderr)
+            min_severity: Minimum severity to log
+        """
+        self._output = output or sys.stderr
+        self._min_severity = min_severity
+        self._severity_order = list(EventSeverity)
+
+    def log_metric(
+        self,
+        name: str,
+        value: float,
+        tags: dict[str, str] | None = None,
+        unit: str | None = None,
+    ) -> None:
+        unit_str = f" {unit}" if unit else ""
+        tags_str = ""
+        if tags:
+            tags_str = " " + " ".join(f"{k}={v}" for k, v in tags.items())
+        print(f"[METRIC] {name}: {value}{unit_str}{tags_str}", file=self._output)
+
+    def log_event(
+        self,
+        name: str,
+        severity: EventSeverity = EventSeverity.INFO,
+        message: str | None = None,
+        data: dict[str, Any] | None = None,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        if self._severity_order.index(severity) < self._severity_order.index(self._min_severity):
+            return
+
+        severity_str = severity.value.upper()
+        msg_str = f": {message}" if message else ""
+        print(f"[{severity_str}] {name}{msg_str}", file=self._output)
+
+    def flush(self) -> None:
+        self._output.flush()
+
+
+class JsonFileSink:
+    """Telemetry sink that writes JSON lines to a file.
+
+    Each metric/event is written as a single JSON line for
+    easy parsing by log aggregation tools.
+    """
+
+    def __init__(self, path: Path | str) -> None:
+        """Initialize JSON file sink.
+
+        Args:
+            path: Path to output file
+        """
+        self._path = Path(path)
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._file = self._path.open("a")
+
+    def log_metric(
+        self,
+        name: str,
+        value: float,
+        tags: dict[str, str] | None = None,
+        unit: str | None = None,
+    ) -> None:
+        record = {
+            "type": "metric",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "name": name,
+            "value": value,
+        }
+        if tags:
+            record["tags"] = tags
+        if unit:
+            record["unit"] = unit
+
+        self._file.write(json.dumps(record) + "\n")
+
+    def log_event(
+        self,
+        name: str,
+        severity: EventSeverity = EventSeverity.INFO,
+        message: str | None = None,
+        data: dict[str, Any] | None = None,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        record = {
+            "type": "event",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "name": name,
+            "severity": severity.value,
+        }
+        if message:
+            record["message"] = message
+        if data:
+            record["data"] = data
+        if tags:
+            record["tags"] = tags
+
+        self._file.write(json.dumps(record) + "\n")
+
+    def flush(self) -> None:
+        self._file.flush()
+
+    def close(self) -> None:
+        """Close the file handle."""
+        self._file.close()
+
+
+class MemorySink:
+    """Telemetry sink that stores data in memory.
+
+    Useful for testing - allows inspection of logged metrics/events.
+    """
+
+    def __init__(self) -> None:
+        self.metrics: list[MetricPoint] = []
+        self.events: list[TelemetryEvent] = []
+
+    def log_metric(
+        self,
+        name: str,
+        value: float,
+        tags: dict[str, str] | None = None,
+        unit: str | None = None,
+    ) -> None:
+        self.metrics.append(
+            MetricPoint(
+                name=name,
+                value=value,
+                tags=tags or {},
+                unit=unit,
+            )
+        )
+
+    def log_event(
+        self,
+        name: str,
+        severity: EventSeverity = EventSeverity.INFO,
+        message: str | None = None,
+        data: dict[str, Any] | None = None,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        self.events.append(
+            TelemetryEvent(
+                name=name,
+                severity=severity,
+                message=message,
+                data=data or {},
+                tags=tags or {},
+            )
+        )
+
+    def flush(self) -> None:
+        pass
+
+    def clear(self) -> None:
+        """Clear all stored data."""
+        self.metrics.clear()
+        self.events.clear()
+
+
+class CompositeSink:
+    """Telemetry sink that forwards to multiple sinks.
+
+    Useful for sending telemetry to multiple destinations
+    (e.g., console + file).
+    """
+
+    def __init__(self, sinks: list[Any]) -> None:
+        """Initialize with list of sinks.
+
+        Args:
+            sinks: Sinks to forward to
+        """
+        self._sinks = sinks
+
+    def log_metric(
+        self,
+        name: str,
+        value: float,
+        tags: dict[str, str] | None = None,
+        unit: str | None = None,
+    ) -> None:
+        for sink in self._sinks:
+            sink.log_metric(name, value, tags, unit)
+
+    def log_event(
+        self,
+        name: str,
+        severity: EventSeverity = EventSeverity.INFO,
+        message: str | None = None,
+        data: dict[str, Any] | None = None,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        for sink in self._sinks:
+            sink.log_event(name, severity, message, data, tags)
+
+    def flush(self) -> None:
+        for sink in self._sinks:
+            sink.flush()

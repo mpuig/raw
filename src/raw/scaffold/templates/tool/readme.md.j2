@@ -1,0 +1,47 @@
+# {{ tool_name }}
+
+{{ description }}
+
+## Status
+
+- **Version:** {{ version }}
+- **Status:** draft
+
+## Inputs
+
+{% for inp in inputs %}
+- **{{ inp.name }}** ({{ inp.type }}): {{ inp.description }}{% if inp.required %} (required){% else %} (optional){% endif %}
+
+{% else %}
+No inputs.
+{% endfor %}
+
+## Outputs
+
+{% for out in outputs %}
+- **{{ out.name }}** ({{ out.type }}): {{ out.description }}
+{% else %}
+No outputs.
+{% endfor %}
+
+## Dependencies
+
+{% for dep in dependencies %}
+- {{ dep }}
+{% else %}
+No dependencies.
+{% endfor %}
+
+## Usage
+
+```python
+from tool import {{ func_name }}
+
+result = {{ func_name }}(...)
+```
+
+## Testing
+
+```bash
+uv run test.py
+```

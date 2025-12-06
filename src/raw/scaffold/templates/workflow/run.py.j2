@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pydantic>=2.0",
+#   "rich>=13.0",
+# ]
+# ///
+"""{{ short_name }} workflow.
+
+Agent-Native Code Rules:
+1. Data Contract: Use Pydantic models between steps, never raw dicts
+2. Resilience: Decorate external calls (API, DB) with @retry
+3. Granularity: Logic in @step methods, run() only coordinates
+4. IO Isolation: No file writes in logic steps, save in run()
+5. Semantic Logging: self.log() for business progress, not debug noise
+"""
+
+from pydantic import BaseModel, Field
+
+from raw_runtime import BaseWorkflow, step, retry
+from raw_runtime.context import WorkflowContext
+from raw_runtime.decorators import cache_step
+from raw_runtime.approval import wait_for_approval, wait_for_webhook
+
+
+# =============================================================================
+# Parameters (CLI inputs)
+# =============================================================================
+
+class {{ class_name }}Params(BaseModel):
+    """Workflow parameters - defines CLI arguments."""
+    # input_file: str = Field(..., description="Path to input file")
+    # output_format: str = Field(default="json", description="Output format")
+
+
+# =============================================================================
+# Internal Models (DATA CONTRACT: typed flow between steps, never use dict)
+# =============================================================================
+
+class ParsedInput(BaseModel):
+    """Output of parsing step."""
+    # Define fields that flow to next step
+    pass
+
+
+class ProcessedResult(BaseModel):
+    """Output of processing step."""
+    # Define fields for final output
+    pass
+
+
+# =============================================================================
+# Workflow
+# =============================================================================
+
+class {{ class_name }}(BaseWorkflow[{{ class_name }}Params]):
+    """{{ description }}"""
+
+    # Uncomment to add instance variables (must use this exact signature):
+    # def __init__(self, params: {{ class_name }}Params, context: WorkflowContext | None = None) -> None:
+    #     super().__init__(params, context)
+    #     self._my_counter = 0
+
+    @step("parse")
+    def parse(self) -> ParsedInput:
+        """Parse raw input into structured data.
+
+        RULES: Return Pydantic model (not dict). No file writes here.
+        """
+        return ParsedInput()
+
+    @step("process")
+    def process(self, parsed: ParsedInput) -> ProcessedResult:
+        """Apply business logic to parsed data.
+
+        RULES: Pure logic only. Use self.log() for business progress.
+        """
+        return ProcessedResult()
+
+    # Example: external API call with @retry for resilience
+    # @step("fetch")
+    # @retry(retries=3, backoff="exponential", base_delay=1.0)
+    # def fetch(self) -> ExternalData:
+    #     """Fetch data from external API."""
+    #     return requests.get(url).json()
+
+    # Example: cache expensive computation (no parameters)
+    # @step("compute")
+    # @cache_step
+    # def compute(self, data: ParsedInput) -> ProcessedResult:
+    #     """Cache results based on input arguments."""
+    #     return expensive_calculation(data)
+
+    # Example: human approval (standalone function, not method)
+    # decision = wait_for_approval(
+    #     prompt="Deploy to production?",
+    #     step_name="deploy_approval",
+    #     options=["approve", "reject"],
+    #     timeout_seconds=300,
+    #     context={"version": "1.0"}
+    # )
+
+    # Example: wait for external webhook data
+    # payload = wait_for_webhook(step_name="external_data", timeout_seconds=60)
+
+    def run(self) -> int:
+        """Coordinate steps. RULE: No logic here, only step calls and save()."""
+        parsed = self.parse()
+        result = self.process(parsed)
+        self.save("result.json", result)
+        return 0
+
+
+if __name__ == "__main__":
+    {{ class_name }}.main()

@@ -1,0 +1,23 @@
+# {{ name }}
+
+**ID:** `{{ workflow_id }}`
+**Status:** draft
+
+## Intent
+
+{{ intent }}
+
+## Usage
+
+```bash
+# 1. Implement run.py in this directory
+
+# 2. Test with mock data
+raw run {{ workflow_id }} --dry
+
+# 3. Publish when ready
+raw publish {{ workflow_id }}
+
+# 4. Run the published workflow
+raw run {{ workflow_id }}
+```

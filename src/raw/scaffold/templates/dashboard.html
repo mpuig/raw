@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RAW Control Plane</title>
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js (via CDN for lightweight interactivity) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- FontAwesome (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0d1117', // GitHub Dark bg
+                            800: '#161b22', // Card bg
+                            700: '#21262d', // Border/Hover
+                            600: '#30363d', // Border light
+                        },
+                        brand: {
+                            blue: '#58a6ff',
+                            green: '#238636',
+                            red: '#da3633',
+                            yellow: '#d29922',
+                            gray: '#8b949e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-300 antialiased min-h-screen p-6" x-data="dashboard()">
+
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto mb-8 flex justify-between items-center border-b border-dark-600 pb-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-brand-blue/10 p-2 rounded-lg">
+                <i class="fa-solid fa-layer-group text-brand-blue text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight">RAW <span class="text-dark-600 font-light">/</span> Control Plane</h1>
+                <div class="text-xs text-brand-gray flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-brand-green animate-pulse"></span>
+                    System Online
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-4 text-sm">
+             <div class="bg-dark-800 px-3 py-1.5 rounded-md border border-dark-600 flex items-center gap-2 text-brand-gray">
+                <i class="fa-regular fa-clock"></i>
+                <span x-text="currentTime"></span>
+             </div>
+             <a href="/docs" class="text-brand-blue hover:text-white transition-colors">API Docs <i class="fa-solid fa-arrow-up-right-from-square text-xs ml-1"></i></a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto space-y-8">
+        
+        <!-- Approvals Section -->
+        <section>
+            <div class="flex items-center gap-3 mb-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-brand-gray">Pending Approvals</h2>
+                {% if approval_count > 0 %}
+                <span class="bg-brand-yellow/20 text-brand-yellow text-xs font-bold px-2 py-0.5 rounded-full">{{ approval_count }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Empty State -->
+            {% if approval_count == 0 %}
+            <div class="bg-dark-800/50 border border-dark-600 border-dashed rounded-lg p-8 text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-dark-700 mb-3">
+                    <i class="fa-solid fa-check text-dark-500"></i>
+                </div>
+                <p class="text-dark-500 text-sm">No pending approvals required.</p>
+            </div>
+            {% endif %}
+
+            <!-- Approval Cards (Grid) -->
+            {% if approval_count > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 <!-- Injected HTML from Server -->
+                 {{ approvals_html|safe }}
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Active Runs Section -->
+        <section>
+            <div class="flex items-center gap-3 mb-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-brand-gray">Active Runs</h2>
+                {% if run_count > 0 %}
+                <span class="bg-brand-blue/20 text-brand-blue text-xs font-bold px-2 py-0.5 rounded-full">{{ run_count }}</span>
+                {% endif %}
+            </div>
+
+            {% if run_count > 0 %}
+             <div class="bg-dark-800 border border-dark-600 rounded-lg overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-dark-700/50 text-brand-gray border-b border-dark-600">
+                        <tr>
+                            <th class="px-4 py-3 font-medium">Run ID</th>
+                            <th class="px-4 py-3 font-medium">Workflow</th>
+                            <th class="px-4 py-3 font-medium">Status</th>
+                            <th class="px-4 py-3 font-medium">Started</th>
+                            <th class="px-4 py-3 font-medium text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-600">
+                        <!-- Jinja Injection Point -->
+                         {{ runs_html|safe }}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            
+             <!-- Fallback empty state -->
+             {% if run_count == 0 %}
+             <div class="bg-dark-800/50 border border-dark-600 border-dashed rounded-lg p-8 text-center">
+                <p class="text-dark-500 text-sm">No active workflows running.</p>
+             </div>
+             {% endif %}
+        </section>
+
+        <!-- Workflow Registry Section -->
+        <section>
+            <div class="flex items-center gap-3 mb-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-brand-gray">Workflow Registry</h2>
+                <span class="bg-dark-700 text-brand-gray text-xs font-bold px-2 py-0.5 rounded-full">{{ workflow_count }}</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {{ workflows_html|safe }}
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function dashboard() {
+            return {
+                approvals: [],
+                runs: [],
+                currentTime: new Date().toLocaleTimeString(),
+                init() {
+                    // Update clock
+                    setInterval(() => {
+                        this.currentTime = new Date().toLocaleTimeString();
+                    }, 1000);
+                    
+                    // Soft refresh every 5s (No flickering)
+                    setInterval(() => {
+                        this.refreshData();
+                    }, 5000);
+                },
+                async refreshData() {
+                    try {
+                        const response = await fetch(window.location.href);
+                        const text = await response.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(text, 'text/html');
+                        
+                        // Surgically replace the main content
+                        const newMain = doc.querySelector('main').innerHTML;
+                        document.querySelector('main').innerHTML = newMain;
+                    } catch (e) {
+                        console.error("Failed to refresh dashboard:", e);
+                    }
+                },
+                async approve(runId, step) {
+                    await fetch(`/approve/${runId}/${step}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({decision: 'approve'})
+                    });
+                    this.refreshData(); // Soft refresh immediately
+                },
+                async reject(runId, step) {
+                    await fetch(`/approve/${runId}/${step}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({decision: 'reject'})
+                    });
+                    this.refreshData(); // Soft refresh immediately
+                }
+            }
+        }
+    </script>
+</body>
+</html>

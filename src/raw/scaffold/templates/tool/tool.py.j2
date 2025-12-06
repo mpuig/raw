@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [{{ deps_str }}# ]
+# ///
+"""{{ description }}"""
+
+from typing import Any
+
+
+def {{ func_name }}({{ inputs_params }}) -> {{ return_type }}:
+    """Execute the tool.
+
+    Args:
+{% for inp in inputs %}
+        {{ inp.name }}: {{ inp.description }}
+{% else %}
+        (no inputs)
+{% endfor %}
+
+    Returns:
+{% for out in outputs %}
+        {{ out.name }}: {{ out.description }}
+{% else %}
+        None
+{% endfor %}
+    """
+    # TODO: Implement tool logic
+    raise NotImplementedError("Tool not implemented yet")
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="{{ description }}")
+{% for inp in inputs %}
+    parser.add_argument("--{{ inp.name }}", required={{ inp.required }}, help="{{ inp.description }}")
+{% endfor %}
+    args = parser.parse_args()
+
+    result = {{ func_name }}({{ call_args }})
+    print(json.dumps(result, indent=2, default=str))
