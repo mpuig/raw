@@ -131,6 +131,52 @@ tools/                    # Tool packages (importable)
 - No comments for self-explanatory code (`# Create directory` before `mkdir()`)
 - Docstrings: one line when possible, no redundant parameter descriptions
 
+### Clean code Architecture
+
+Here is a list of software engineering best practices to be applied:
+
+1. Clean Architecture Principles (Separation into Layers):
+    * Goal: Decouple core business logic from infrastructure concerns.
+    * Concept: Organize code into concentric layers (e.g., Domain, Application, Adapters, Infrastructure). Inner layers define essential rules and don't know about outer layers. Dependencies flow
+      inwards.
+
+2. Dependency Injection (DI):
+    * Goal: Promote loose coupling and enhance testability.
+    * Concept: Components receive their dependencies from an external source (a "configurator" or "composition root") rather than creating them internally.
+
+3. Programming to Interfaces (Protocols/Abstract Classes):
+    * Goal: Allow interchangeable implementations and reduce coupling to concrete types.
+    * Concept: Define contracts (interfaces/protocols) for services and components. Components should depend on these abstractions, not on specific implementations.
+
+4. Single Responsibility Principle (SRP):
+    * Goal: Ensure each component has one, clear, and well-defined purpose.
+    * Concept: A class or module should have only one reason to change, preventing cascading changes when requirements evolve.
+
+5. Type Safety and Data Validation:
+    * Goal: Catch errors early and ensure data integrity.
+    * Concept: Use a robust type system and validation libraries for data structures (e.g., configuration, API inputs/outputs). Validate data upon entry to the system's boundaries.
+
+6. Modularity and Clear Organization:
+    * Goal: Improve navigability, reduce cognitive load, and enable parallel development.
+    * Concept: Group related files and classes into logical modules or packages based on features or architectural layers.
+
+7. Robust Error Handling and Fault Tolerance:
+    * Goal: Prevent system crashes and allow for graceful recovery.
+    * Concept: Implement structured error handling (custom exceptions, error policies, retry mechanisms) to differentiate between transient and fatal errors, enabling appropriate responses.
+
+8. Progressive Disclosure of Complexity:
+    * Goal: Keep simple things simple, while allowing for complex functionality when needed.
+    * Concept: Design systems where components expose only necessary information initially, loading more detail or functionality only when explicitly requested or required.
+
+9. Immutability:
+    * Goal: Reduce side effects and simplify reasoning about state.
+    * Concept: Prefer immutable data structures, especially for events or configuration objects, ensuring their state cannot change after creation.
+
+10. "Why > What" Documentation:
+    * Goal: Provide context and architectural intent in documentation.
+    * Concept: Comments and docstrings should explain why a particular design choice was made or why a piece of code behaves in a certain way, rather than merely restating what the code does (which is
+      often self-evident).
+
 ---
 
 ## Testing
