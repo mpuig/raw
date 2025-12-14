@@ -139,6 +139,7 @@ class HttpOrchestrator:
     """Orchestrator that communicates with a RAW server via HTTP.
 
     Used when workflows need to be triggered remotely.
+    Uses a persistent httpx.Client for connection reuse across requests.
     """
 
     def __init__(self, server_url: str | None = None) -> None:
@@ -156,6 +157,25 @@ class HttpOrchestrator:
         if server_url is None:
             raise ValueError("RAW_SERVER_URL not set and no server_url provided")
         self._server_url = server_url.rstrip("/")
+        self._client: "httpx.Client | None" = None
+
+    def _get_client(self) -> "httpx.Client":
+        """Get or create the HTTP client.
+
+        Lazy initialization allows the orchestrator to be created without
+        importing httpx until actually needed. Reusing the client enables
+        HTTP connection pooling for better performance.
+        """
+        if self._client is None:
+            import httpx
+            self._client = httpx.Client(timeout=30.0)
+        return self._client
+
+    def close(self) -> None:
+        """Close the HTTP client and release connections."""
+        if self._client is not None:
+            self._client.close()
+            self._client = None
 
     @property
     def server_url(self) -> str:
@@ -191,7 +211,7 @@ class HttpOrchestrator:
         payload = {"args": args or []}
 
         try:
-            response = httpx.post(url, json=payload, timeout=30)
+            response = self._get_client().post(url, json=payload)
             response.raise_for_status()
             data = response.json()
 
@@ -215,10 +235,8 @@ class HttpOrchestrator:
 
     def get_status(self, run_id: str) -> OrchestratorRunInfo:
         """Get run status from server."""
-        import httpx
-
         url = f"{self._server_url}/runs"
-        response = httpx.get(url, timeout=10)
+        response = self._get_client().get(url)
         response.raise_for_status()
 
         for run in response.json():
@@ -263,10 +281,8 @@ class HttpOrchestrator:
         limit: int = 100,
     ) -> list[OrchestratorRunInfo]:
         """List runs from server."""
-        import httpx
-
         url = f"{self._server_url}/runs"
-        response = httpx.get(url, timeout=10)
+        response = self._get_client().get(url)
         response.raise_for_status()
 
         runs = []
