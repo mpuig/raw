@@ -43,6 +43,17 @@ from raw_runtime.bus import (
     LocalEventBus,
     NullEventBus,
 )
+from raw_runtime.capability import (
+    Capability,
+    CapabilityEvent,
+    CapabilityEventType,
+    CapabilityRegistry,
+    CapabilityResult,
+    get_capability,
+    get_capability_registry,
+    register_capability,
+    set_capability_registry,
+)
 from raw_runtime.connection import (
     ServerConnection,
     get_connection,
@@ -53,13 +64,6 @@ from raw_runtime.context import (
     WorkflowContext,
     get_workflow_context,
     set_workflow_context,
-)
-from raw_runtime.manifest import (
-    LocalManifestWriter,
-    ManifestBuilder,
-    ManifestWriter,
-    get_manifest_writer,
-    set_manifest_writer,
 )
 from raw_runtime.decorators import cache_step, conditional, raw_step
 from raw_runtime.env import (
@@ -91,6 +95,13 @@ from raw_runtime.events import (
     WorkflowTriggeredEvent,
 )
 from raw_runtime.handlers import ConsoleEventHandler
+from raw_runtime.manifest import (
+    LocalManifestWriter,
+    ManifestBuilder,
+    ManifestWriter,
+    get_manifest_writer,
+    set_manifest_writer,
+)
 from raw_runtime.models import (
     Artifact,
     EnvironmentInfo,
@@ -147,6 +158,13 @@ from raw_runtime.telemetry import (
     log_event,
     log_metric,
     set_telemetry_sink,
+)
+from raw_runtime.triggers import (
+    TriggerEvent,
+    clear_trigger_registry,
+    get_workflows_for_event,
+    list_trigger_types,
+    on_event,
 )
 
 __version__ = "0.1.0"
@@ -276,4 +294,20 @@ __all__ = [
     "ListLogger",
     "get_logger",
     "set_logger",
+    # Capabilities
+    "Capability",
+    "CapabilityEvent",
+    "CapabilityEventType",
+    "CapabilityResult",
+    "CapabilityRegistry",
+    "get_capability",
+    "get_capability_registry",
+    "set_capability_registry",
+    "register_capability",
+    # Triggers
+    "on_event",
+    "TriggerEvent",
+    "get_workflows_for_event",
+    "list_trigger_types",
+    "clear_trigger_registry",
 ]

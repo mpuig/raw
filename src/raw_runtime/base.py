@@ -29,12 +29,16 @@ Usage:
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Generic, TypeVar, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, get_args, get_origin
 
 from pydantic import BaseModel
 
 from raw_runtime.context import WorkflowContext
 from raw_runtime.protocols.logger import WorkflowLogger, get_logger
+
+if TYPE_CHECKING:
+    from raw_runtime.capability import Capability
+    from raw_runtime.triggers import TriggerEvent
 
 ParamsT = TypeVar("ParamsT", bound=BaseModel)
 
@@ -56,6 +60,7 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         params: ParamsT,
         context: WorkflowContext | None = None,
         logger: WorkflowLogger | None = None,
+        trigger_event: "TriggerEvent | None" = None,
     ) -> None:
         """Initialize workflow with parameters.
 
@@ -63,12 +68,14 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
             params: Validated workflow parameters
             context: Optional workflow execution context
             logger: Optional logger for output (defaults to Rich console)
+            trigger_event: Optional event that triggered this workflow
         """
         self.params = params
         self.context = context
         self._logger = logger or get_logger()
         self._results_dir: Path | None = None
         self._log_file: Path | None = None
+        self._trigger_event = trigger_event
 
     @property
     def results_dir(self) -> Path:
@@ -97,6 +104,44 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         if self._log_file is None:
             self._log_file = Path("output.log")
         return self._log_file
+
+    @property
+    def trigger_event(self) -> "TriggerEvent | None":
+        """Get the event that triggered this workflow, if any.
+
+        Returns None for manually invoked workflows.
+        For event-triggered workflows (decorated with @on_event),
+        contains the TriggerEvent with source and data.
+        """
+        return self._trigger_event
+
+    def capability(self, name: str) -> "Capability":
+        """Get a capability by name.
+
+        Capabilities provide access to external services (email, SMS, HTTP, etc.)
+        with a uniform async interface.
+
+        Args:
+            name: Capability name (e.g., "email", "sms", "http")
+
+        Returns:
+            The capability instance
+
+        Raises:
+            KeyError: If the capability is not registered
+
+        Usage:
+            # Simple request/response
+            result = await self.capability("http").call(url="https://api.example.com")
+
+            # Streaming/long-running
+            async for event in self.capability("converse").run(bot="support"):
+                if event.type == "message":
+                    self.log(event.data["text"])
+        """
+        from raw_runtime.capability import get_capability
+
+        return get_capability(name)
 
     @abstractmethod
     def run(self) -> int:
