@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raw.engine.backends import SubprocessBackend
+from raw.engine.container import Container
 from raw.engine.execution import (
     DRY_RUN_TIMEOUT_SECONDS,
     get_default_backend,
@@ -13,7 +14,7 @@ from raw.engine.execution import (
     run_workflow,
     set_default_backend,
 )
-from raw.engine.protocols import ExecutionBackend, RunResult
+from raw.engine.protocols import ExecutionBackend, RunResult, RunStorage
 
 
 class TestRunResult:
@@ -129,7 +130,11 @@ class TestSubprocessBackend:
 
 
 class MockBackend(ExecutionBackend):
-    """Mock backend for testing."""
+    """Mock backend for testing.
+
+    Implements ExecutionBackend protocol to enable isolated unit tests
+    without spawning real subprocesses.
+    """
 
     def __init__(self, result: RunResult) -> None:
         self.result = result
@@ -151,9 +156,50 @@ class MockBackend(ExecutionBackend):
         return self.result
 
 
+class MockStorage(RunStorage):
+    """Mock storage for testing.
+
+    Implements RunStorage protocol to enable isolated unit tests
+    without filesystem side effects.
+    """
+
+    def __init__(self) -> None:
+        self.created_directories: list[Path] = []
+        self.saved_manifests: list[dict] = []
+        self.saved_logs: list[dict] = []
+
+    def create_run_directory(self, workflow_dir: Path) -> Path:
+        run_dir = workflow_dir / "runs" / "mock-run"
+        self.created_directories.append(run_dir)
+        return run_dir
+
+    def save_manifest(
+        self,
+        run_dir: Path,
+        workflow_id: str,
+        exit_code: int,
+        duration_seconds: float,
+        args: list[str],
+    ) -> None:
+        self.saved_manifests.append({
+            "run_dir": run_dir,
+            "workflow_id": workflow_id,
+            "exit_code": exit_code,
+            "duration_seconds": duration_seconds,
+            "args": args,
+        })
+
+    def save_output_log(self, run_dir: Path, stdout: str, stderr: str) -> None:
+        self.saved_logs.append({
+            "run_dir": run_dir,
+            "stdout": stdout,
+            "stderr": stderr,
+        })
+
+
 @pytest.fixture
 def mock_backend():
-    """Fixture that sets up and tears down a mock backend."""
+    """Fixture that sets up and tears down a mock backend via Container."""
     result = RunResult(
         exit_code=0,
         stdout="success",
@@ -161,10 +207,18 @@ def mock_backend():
         duration_seconds=0.1,
     )
     backend = MockBackend(result)
-    old_backend = get_default_backend()
-    set_default_backend(backend)
+    Container.set_backend(backend)
     yield backend
-    set_default_backend(old_backend)
+    Container.reset()
+
+
+@pytest.fixture
+def mock_storage():
+    """Fixture that sets up and tears down a mock storage via Container."""
+    storage = MockStorage()
+    Container.set_storage(storage)
+    yield storage
+    Container.reset()
 
 
 class TestRunWorkflow:
@@ -262,6 +316,67 @@ class TestRunDry:
             set_default_backend(old_backend)
 
 
+class TestContainer:
+    """Tests for Container (composition root)."""
+
+    def test_container_returns_default_backend(self) -> None:
+        """Test that Container returns SubprocessBackend by default."""
+        Container.reset()
+        backend = Container.backend()
+        assert isinstance(backend, SubprocessBackend)
+
+    def test_container_returns_same_instance(self) -> None:
+        """Test that Container returns the same instance on repeated calls."""
+        Container.reset()
+        backend1 = Container.backend()
+        backend2 = Container.backend()
+        assert backend1 is backend2
+
+    def test_container_override_backend(self) -> None:
+        """Test that Container allows backend override."""
+        result = RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+        mock = MockBackend(result)
+
+        Container.set_backend(mock)
+        assert Container.backend() is mock
+
+        Container.reset()
+        assert isinstance(Container.backend(), SubprocessBackend)
+
+    def test_container_override_storage(self) -> None:
+        """Test that Container allows storage override."""
+        mock = MockStorage()
+
+        Container.set_storage(mock)
+        assert Container.storage() is mock
+
+        Container.reset()
+
+    def test_container_workflow_runner_uses_overrides(self, tmp_path: Path) -> None:
+        """Test that workflow_runner() uses overridden dependencies."""
+        result = RunResult(exit_code=0, stdout="test", stderr="", duration_seconds=0.1)
+        mock_be = MockBackend(result)
+        mock_st = MockStorage()
+
+        Container.set_backend(mock_be)
+        Container.set_storage(mock_st)
+
+        script = tmp_path / "run.py"
+        script.write_text("print('test')")
+
+        runner = Container.workflow_runner()
+        runner.run(tmp_path, isolate_run=True)
+
+        # Verify mock backend was called
+        assert len(mock_be.calls) == 1
+
+        # Verify mock storage was used
+        assert len(mock_st.created_directories) == 1
+        assert len(mock_st.saved_manifests) == 1
+
+        Container.reset()
+
+
 class TestWorkflowRunner:
     """Tests for WorkflowRunner class with dependency injection."""
 
@@ -305,3 +420,35 @@ class TestWorkflowRunner:
         assert len(run_dirs) == 1
         assert (run_dirs[0] / "manifest.json").exists()
         assert (run_dirs[0] / "output.log").exists()
+
+    def test_runner_with_fully_mocked_dependencies(self, tmp_path: Path) -> None:
+        """Test runner with both backend and storage mocked.
+
+        Demonstrates that WorkflowRunner can be tested without any
+        real filesystem or subprocess side effects.
+        """
+        from raw.engine.runner import WorkflowRunner
+
+        script = tmp_path / "run.py"
+        script.write_text("print('isolated')")
+
+        result = RunResult(exit_code=0, stdout="isolated", stderr="", duration_seconds=0.05)
+        mock_be = MockBackend(result)
+        mock_st = MockStorage()
+
+        runner = WorkflowRunner(backend=mock_be, storage=mock_st)
+        run_result = runner.run(tmp_path, isolate_run=True)
+
+        # Backend was called
+        assert len(mock_be.calls) == 1
+        assert mock_be.calls[0]["script_path"] == script
+
+        # Storage methods were called (no actual filesystem)
+        assert len(mock_st.created_directories) == 1
+        assert len(mock_st.saved_manifests) == 1
+        assert mock_st.saved_manifests[0]["exit_code"] == 0
+        assert len(mock_st.saved_logs) == 1
+
+        # Result is correct
+        assert run_result.exit_code == 0
+        assert run_result.stdout == "isolated"

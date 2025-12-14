@@ -4,7 +4,8 @@ This module provides the public API for workflow execution.
 It uses WorkflowRunner internally with default backends.
 
 For custom execution strategies, use WorkflowRunner directly
-with injected ExecutionBackend and RunStorage implementations.
+with injected ExecutionBackend and RunStorage implementations,
+or use Container for DI configuration.
 """
 
 from pathlib import Path
@@ -14,50 +15,37 @@ from raw.engine.backends import (
     SubprocessBackend,
     parse_pep723_dependencies,
 )
+from raw.engine.container import Container
 from raw.engine.protocols import ExecutionBackend, RunResult, RunStorage
 from raw.engine.runner import DRY_RUN_TIMEOUT_SECONDS, WorkflowRunner
 
 
-# Default instances for backward compatibility
-# These can be overridden for testing via set_default_backend/set_default_storage
-_default_backend: ExecutionBackend | None = None
-_default_storage: RunStorage | None = None
+# Backward-compatible accessors that delegate to Container
 
 
 def get_default_backend() -> ExecutionBackend:
     """Get the default execution backend."""
-    global _default_backend
-    if _default_backend is None:
-        _default_backend = SubprocessBackend()
-    return _default_backend
+    return Container.backend()
 
 
 def set_default_backend(backend: ExecutionBackend | None) -> None:
     """Set the default execution backend (useful for testing)."""
-    global _default_backend
-    _default_backend = backend
+    Container.set_backend(backend)
 
 
 def get_default_storage() -> RunStorage:
     """Get the default run storage."""
-    global _default_storage
-    if _default_storage is None:
-        _default_storage = LocalRunStorage()
-    return _default_storage
+    return Container.storage()
 
 
 def set_default_storage(storage: RunStorage | None) -> None:
     """Set the default run storage (useful for testing)."""
-    global _default_storage
-    _default_storage = storage
+    Container.set_storage(storage)
 
 
 def get_default_runner() -> WorkflowRunner:
     """Get a WorkflowRunner with default dependencies."""
-    return WorkflowRunner(
-        backend=get_default_backend(),
-        storage=get_default_storage(),
-    )
+    return Container.workflow_runner()
 
 
 # Backward-compatible module-level functions
@@ -185,6 +173,8 @@ def run_dry(
 
 # Re-export for backward compatibility
 __all__ = [
+    # DI Container
+    "Container",
     # Protocols and types
     "ExecutionBackend",
     "RunStorage",
@@ -200,7 +190,7 @@ __all__ = [
     "save_run_manifest",
     "verify_tool_hashes",
     "parse_pep723_dependencies",
-    # Default management
+    # Default management (delegates to Container)
     "get_default_backend",
     "set_default_backend",
     "get_default_storage",
