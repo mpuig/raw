@@ -10,6 +10,7 @@ Note: Protocol is in raw_runtime.protocols.secrets,
       This module re-exports for backwards compatibility.
 """
 
+from raw_runtime.container import RuntimeContainer
 from raw_runtime.drivers.secrets import (
     CachingSecretProvider,
     ChainedSecretProvider,
@@ -18,8 +19,8 @@ from raw_runtime.drivers.secrets import (
 )
 from raw_runtime.protocols.secrets import SecretProvider
 
-# Global secret provider (defaults to env + dotenv)
-_secret_provider: SecretProvider | None = None
+
+# Backward-compatible accessors that delegate to RuntimeContainer
 
 
 def get_secret_provider() -> SecretProvider:
@@ -27,21 +28,12 @@ def get_secret_provider() -> SecretProvider:
 
     Returns a ChainedSecretProvider with EnvVar and DotEnv by default.
     """
-    global _secret_provider
-    if _secret_provider is None:
-        _secret_provider = ChainedSecretProvider(
-            [
-                EnvVarSecretProvider(),
-                DotEnvSecretProvider(),
-            ]
-        )
-    return _secret_provider
+    return RuntimeContainer.secrets()
 
 
 def set_secret_provider(provider: SecretProvider | None) -> None:
     """Set the global secret provider."""
-    global _secret_provider
-    _secret_provider = provider
+    RuntimeContainer.set_secrets(provider)
 
 
 def get_secret(key: str, default: str | None = None) -> str | None:

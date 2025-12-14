@@ -128,7 +128,11 @@ class ManifestBuilder:
         )
 
 
-# Default writer instance
+# Backward-compatible accessors
+# Note: Can't import RuntimeContainer here due to circular import.
+# These functions are kept for backward compatibility but the globals
+# are managed here directly. RuntimeContainer imports from this module.
+
 _default_writer: ManifestWriter | None = None
 
 

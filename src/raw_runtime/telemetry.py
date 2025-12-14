@@ -10,6 +10,7 @@ Note: Protocol is in raw_runtime.protocols.telemetry,
       This module re-exports for backwards compatibility.
 """
 
+from raw_runtime.container import RuntimeContainer
 from raw_runtime.drivers.telemetry import (
     CompositeSink,
     ConsoleSink,
@@ -21,8 +22,8 @@ from raw_runtime.drivers.telemetry import (
 )
 from raw_runtime.protocols.telemetry import EventSeverity, TelemetrySink
 
-# Global telemetry sink
-_telemetry_sink: TelemetrySink | None = None
+
+# Backward-compatible accessors that delegate to RuntimeContainer
 
 
 def get_telemetry_sink() -> TelemetrySink:
@@ -30,16 +31,12 @@ def get_telemetry_sink() -> TelemetrySink:
 
     Returns NullSink by default (telemetry opt-in).
     """
-    global _telemetry_sink
-    if _telemetry_sink is None:
-        _telemetry_sink = NullSink()
-    return _telemetry_sink
+    return RuntimeContainer.telemetry()
 
 
 def set_telemetry_sink(sink: TelemetrySink | None) -> None:
     """Set the global telemetry sink."""
-    global _telemetry_sink
-    _telemetry_sink = sink
+    RuntimeContainer.set_telemetry(sink)
 
 
 def log_metric(

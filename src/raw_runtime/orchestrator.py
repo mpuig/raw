@@ -11,8 +11,7 @@ Note: Protocol is in raw_runtime.protocols.orchestrator,
       This module re-exports for backwards compatibility.
 """
 
-import os
-
+from raw_runtime.container import RuntimeContainer
 from raw_runtime.drivers.orchestrator import HttpOrchestrator, LocalOrchestrator
 from raw_runtime.protocols.orchestrator import (
     Orchestrator,
@@ -20,8 +19,8 @@ from raw_runtime.protocols.orchestrator import (
     OrchestratorRunStatus,
 )
 
-# Global orchestrator
-_orchestrator: Orchestrator | None = None
+
+# Backward-compatible accessors that delegate to RuntimeContainer
 
 
 def get_orchestrator() -> Orchestrator:
@@ -31,20 +30,12 @@ def get_orchestrator() -> Orchestrator:
     - HttpOrchestrator if RAW_SERVER_URL is set
     - LocalOrchestrator otherwise
     """
-    global _orchestrator
-    if _orchestrator is None:
-        server_url = os.environ.get("RAW_SERVER_URL")
-        if server_url:
-            _orchestrator = HttpOrchestrator(server_url)
-        else:
-            _orchestrator = LocalOrchestrator()
-    return _orchestrator
+    return RuntimeContainer.orchestrator()
 
 
 def set_orchestrator(orchestrator: Orchestrator | None) -> None:
     """Set the global orchestrator."""
-    global _orchestrator
-    _orchestrator = orchestrator
+    RuntimeContainer.set_orchestrator(orchestrator)
 
 
 __all__ = [

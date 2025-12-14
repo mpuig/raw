@@ -10,6 +10,7 @@ Note: Protocol is in raw_runtime.protocols.storage,
       This module re-exports for backwards compatibility.
 """
 
+from raw_runtime.container import RuntimeContainer
 from raw_runtime.drivers.storage import (
     FileSystemStorage,
     MemoryStorage,
@@ -20,8 +21,8 @@ from raw_runtime.protocols.storage import StorageBackend
 # Public alias for backwards compatibility
 serialize_for_storage = _serialize_for_storage
 
-# Global storage backend
-_storage: StorageBackend | None = None
+
+# Backward-compatible accessors that delegate to RuntimeContainer
 
 
 def get_storage() -> StorageBackend:
@@ -29,16 +30,12 @@ def get_storage() -> StorageBackend:
 
     Returns FileSystemStorage by default if no storage is set.
     """
-    global _storage
-    if _storage is None:
-        _storage = FileSystemStorage()
-    return _storage
+    return RuntimeContainer.storage()
 
 
 def set_storage(storage: StorageBackend | None) -> None:
     """Set the global storage backend."""
-    global _storage
-    _storage = storage
+    RuntimeContainer.set_storage(storage)
 
 
 __all__ = [

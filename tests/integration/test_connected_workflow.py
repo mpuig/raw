@@ -71,6 +71,9 @@ def raw_server(server_port, tmp_path):
         time.sleep(0.1)
     else:
         proc.terminate()
+        stdout, stderr = proc.communicate()
+        print(f"Server stdout: {stdout.decode()}")
+        print(f"Server stderr: {stderr.decode()}")
         pytest.fail("Server failed to start")
 
     yield base_url
