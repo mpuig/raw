@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EventType(str, Enum):
@@ -46,7 +46,14 @@ class EventType(str, Enum):
 
 
 class BaseEvent(BaseModel):
-    """Base event with common fields."""
+    """Base event with common fields.
+
+    Events are immutable (frozen=True) because they represent facts about
+    what happened. Once an event is created, it should never be modified -
+    this ensures the integrity of audit logs and event streams.
+    """
+
+    model_config = ConfigDict(frozen=True)
 
     event_id: str = Field(default_factory=lambda: uuid4().hex[:12])
     event_type: EventType

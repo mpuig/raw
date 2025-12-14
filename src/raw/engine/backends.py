@@ -28,6 +28,9 @@ def parse_pep723_dependencies(script_path: Path) -> list[str]:
     except OSError:
         return []
 
+    # PEP 723 defines a standard format for inline script metadata.
+    # We use regex rather than a TOML parser because the metadata is
+    # embedded in Python comments, not a standalone TOML file.
     pattern = r"# /// script\s*\n(.*?)# ///"
     match = re.search(pattern, content, re.DOTALL)
     if not match:
@@ -44,7 +47,9 @@ def parse_pep723_dependencies(script_path: Path) -> list[str]:
 
     dep_strings = re.findall(r'"([^"]+)"', deps_content)
 
-    # Filter out pydantic and rich (already in raw_runtime)
+    # Filter out pydantic and rich because raw_runtime already provides them.
+    # Including them would cause version conflicts and slow down execution
+    # as uv would need to resolve potentially incompatible versions.
     filtered = [d for d in dep_strings if not d.startswith(("pydantic", "rich"))]
 
     return filtered
@@ -97,9 +102,14 @@ class SubprocessBackend(ExecutionBackend):
         except subprocess.TimeoutExpired as e:
             end_time = datetime.now(timezone.utc)
             duration = (end_time - start_time).total_seconds()
+            # TimeoutExpired.stdout can be str (text=True) or bytes (text=False).
+            # We always run with text=True, but handle bytes defensively in case
+            # the behavior changes or we're mocked in tests.
             stdout = e.stdout if isinstance(e.stdout, str) else (e.stdout.decode() if e.stdout else "")
             return RunResult(
-                exit_code=124,  # Standard timeout exit code
+                # Exit code 124 is the Unix standard for timeout (used by GNU timeout).
+                # This allows callers to distinguish timeouts from other failures.
+                exit_code=124,
                 stdout=stdout,
                 stderr=f"Timeout: execution exceeded {timeout}s limit",
                 duration_seconds=duration,
