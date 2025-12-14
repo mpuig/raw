@@ -1,13 +1,23 @@
 """Environment configuration and provider detection for RAW."""
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import BaseModel, ConfigDict
 
-@dataclass
-class ProviderConfig:
-    """Configuration for an API provider."""
+
+class ProviderConfig(BaseModel):
+    """Configuration for an API provider.
+
+    Using Pydantic for consistency with other data models.
+    Frozen because provider configurations are static metadata.
+
+    Note: We use custom load_dotenv() instead of pydantic-settings because
+    it searches up the directory tree for .env files, which BaseSettings
+    doesn't support without custom source configuration.
+    """
+
+    model_config = ConfigDict(frozen=True)
 
     name: str
     env_var: str

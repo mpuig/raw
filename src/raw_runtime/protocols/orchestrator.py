@@ -1,9 +1,10 @@
 """Orchestrator protocol definition."""
 
-from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Protocol, runtime_checkable
+
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class OrchestratorRunStatus(str, Enum):
@@ -18,9 +19,17 @@ class OrchestratorRunStatus(str, Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass
-class OrchestratorRunInfo:
-    """Information about a workflow run."""
+class OrchestratorRunInfo(BaseModel):
+    """Information about a workflow run.
+
+    Using Pydantic enables:
+    - Automatic JSON serialization via model_dump_json()
+    - Safe parsing of API responses via model_validate()
+    - Type coercion for datetime fields from ISO strings
+
+    Note: Not frozen because status/completed_at/exit_code are updated
+    during workflow execution by LocalOrchestrator.
+    """
 
     run_id: str
     workflow_id: str
@@ -29,8 +38,9 @@ class OrchestratorRunInfo:
     completed_at: datetime | None = None
     exit_code: int | None = None
     error: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @computed_field
     @property
     def ended_at(self) -> datetime | None:
         """Alias for completed_at for backwards compatibility."""

@@ -4,14 +4,24 @@ Defines contracts for execution backends and run storage,
 enabling dependency injection and testability.
 """
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from pydantic import BaseModel, ConfigDict
 
-@dataclass
-class RunResult:
-    """Result of a workflow execution."""
+
+class RunResult(BaseModel):
+    """Result of a workflow execution.
+
+    Using Pydantic enables:
+    - Automatic JSON serialization for manifest storage
+    - Type validation at construction time
+    - Consistent serialization format
+
+    Frozen because results are immutable facts about past executions.
+    """
+
+    model_config = ConfigDict(frozen=True)
 
     exit_code: int
     stdout: str

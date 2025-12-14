@@ -1,36 +1,52 @@
 """Telemetry sink implementations."""
 
-import json
 import sys
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any, Literal, TextIO
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from raw_runtime.protocols.telemetry import EventSeverity
 
 
-@dataclass
-class MetricPoint:
-    """A single metric data point."""
+class MetricPoint(BaseModel):
+    """A single metric data point.
 
+    Using Pydantic enables automatic JSON serialization in JsonFileSink
+    via model_dump_json(), eliminating manual dict construction.
+
+    Frozen because metrics are immutable facts about measurements.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["metric"] = "metric"
     name: str
     value: float
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    tags: dict[str, str] = field(default_factory=dict)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    tags: dict[str, str] = Field(default_factory=dict)
     unit: str | None = None
 
 
-@dataclass
-class TelemetryEvent:
-    """A structured telemetry event."""
+class TelemetryEvent(BaseModel):
+    """A structured telemetry event.
 
+    Using Pydantic enables automatic JSON serialization in JsonFileSink
+    via model_dump_json(), eliminating manual dict construction.
+
+    Frozen because events are immutable facts about what happened.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["event"] = "event"
     name: str
     severity: EventSeverity = EventSeverity.INFO
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     message: str | None = None
-    data: dict[str, Any] = field(default_factory=dict)
-    tags: dict[str, str] = field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
+    tags: dict[str, str] = Field(default_factory=dict)
 
 
 class NullSink:
@@ -139,18 +155,14 @@ class JsonFileSink:
         tags: dict[str, str] | None = None,
         unit: str | None = None,
     ) -> None:
-        record = {
-            "type": "metric",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "name": name,
-            "value": value,
-        }
-        if tags:
-            record["tags"] = tags
-        if unit:
-            record["unit"] = unit
-
-        self._file.write(json.dumps(record) + "\n")
+        # Pydantic handles JSON serialization with proper datetime formatting
+        metric = MetricPoint(
+            name=name,
+            value=value,
+            tags=tags or {},
+            unit=unit,
+        )
+        self._file.write(metric.model_dump_json(exclude_none=True) + "\n")
 
     def log_event(
         self,
@@ -160,20 +172,15 @@ class JsonFileSink:
         data: dict[str, Any] | None = None,
         tags: dict[str, str] | None = None,
     ) -> None:
-        record = {
-            "type": "event",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "name": name,
-            "severity": severity.value,
-        }
-        if message:
-            record["message"] = message
-        if data:
-            record["data"] = data
-        if tags:
-            record["tags"] = tags
-
-        self._file.write(json.dumps(record) + "\n")
+        # Pydantic handles JSON serialization with proper datetime/enum formatting
+        event = TelemetryEvent(
+            name=name,
+            severity=severity,
+            message=message,
+            data=data or {},
+            tags=tags or {},
+        )
+        self._file.write(event.model_dump_json(exclude_none=True) + "\n")
 
     def flush(self) -> None:
         self._file.flush()
