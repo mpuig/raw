@@ -3,13 +3,17 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from raw.engine.backends import SubprocessBackend
 from raw.engine.execution import (
     DRY_RUN_TIMEOUT_SECONDS,
-    RunResult,
-    SubprocessBackend,
+    get_default_backend,
     run_dry,
     run_workflow,
+    set_default_backend,
 )
+from raw.engine.protocols import ExecutionBackend, RunResult
 
 
 class TestRunResult:
@@ -49,7 +53,7 @@ class TestSubprocessBackend:
         """Test that timeout parameter is passed to subprocess."""
         backend = SubprocessBackend()
 
-        with patch("raw.engine.execution.subprocess.run") as mock_run:
+        with patch("raw.engine.backends.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout="success",
@@ -74,7 +78,7 @@ class TestSubprocessBackend:
         timeout_error = subprocess.TimeoutExpired(cmd=["test"], timeout=5)
         timeout_error.stdout = "partial output"  # str, not bytes
 
-        with patch("raw.engine.execution.subprocess.run") as mock_run:
+        with patch("raw.engine.backends.subprocess.run") as mock_run:
             mock_run.side_effect = timeout_error
 
             script_path = Path("/tmp/test.py")
@@ -94,7 +98,7 @@ class TestSubprocessBackend:
         timeout_error = subprocess.TimeoutExpired(cmd=["test"], timeout=5)
         timeout_error.stdout = b"partial bytes output"  # bytes
 
-        with patch("raw.engine.execution.subprocess.run") as mock_run:
+        with patch("raw.engine.backends.subprocess.run") as mock_run:
             mock_run.side_effect = timeout_error
 
             script_path = Path("/tmp/test.py")
@@ -113,7 +117,7 @@ class TestSubprocessBackend:
         timeout_error = subprocess.TimeoutExpired(cmd=["test"], timeout=5)
         timeout_error.stdout = None
 
-        with patch("raw.engine.execution.subprocess.run") as mock_run:
+        with patch("raw.engine.backends.subprocess.run") as mock_run:
             mock_run.side_effect = timeout_error
 
             script_path = Path("/tmp/test.py")
@@ -122,6 +126,45 @@ class TestSubprocessBackend:
             assert result.timed_out is True
             assert result.exit_code == 124
             assert result.stdout == ""  # Should handle None
+
+
+class MockBackend(ExecutionBackend):
+    """Mock backend for testing."""
+
+    def __init__(self, result: RunResult) -> None:
+        self.result = result
+        self.calls: list[dict] = []
+
+    def run(
+        self,
+        script_path: Path,
+        args: list[str],
+        cwd: Path | None = None,
+        timeout: float | None = None,
+    ) -> RunResult:
+        self.calls.append({
+            "script_path": script_path,
+            "args": args,
+            "cwd": cwd,
+            "timeout": timeout,
+        })
+        return self.result
+
+
+@pytest.fixture
+def mock_backend():
+    """Fixture that sets up and tears down a mock backend."""
+    result = RunResult(
+        exit_code=0,
+        stdout="success",
+        stderr="",
+        duration_seconds=0.1,
+    )
+    backend = MockBackend(result)
+    old_backend = get_default_backend()
+    set_default_backend(backend)
+    yield backend
+    set_default_backend(old_backend)
 
 
 class TestRunWorkflow:
@@ -133,107 +176,64 @@ class TestRunWorkflow:
         assert result.exit_code == 1
         assert "Script not found" in result.stderr
 
-    def test_timeout_parameter_passed(self, tmp_path: Path) -> None:
+    def test_timeout_parameter_passed(self, tmp_path: Path, mock_backend: MockBackend) -> None:
         """Test that timeout is passed to backend."""
         script = tmp_path / "test.py"
         script.write_text("print('hello')")
 
-        with patch("raw.engine.execution.default_backend") as mock_backend:
-            mock_backend.run.return_value = RunResult(
-                exit_code=0,
-                stdout="hello",
-                stderr="",
-                duration_seconds=0.1,
-            )
+        run_workflow(tmp_path, "test.py", timeout=45.0)
 
-            run_workflow(tmp_path, "test.py", timeout=45.0)
-
-            mock_backend.run.assert_called_once()
-            call_kwargs = mock_backend.run.call_args[1]
-            assert call_kwargs["timeout"] == 45.0
+        assert len(mock_backend.calls) == 1
+        assert mock_backend.calls[0]["timeout"] == 45.0
 
 
 class TestRunDry:
     """Tests for run_dry function."""
 
-    def test_uses_default_timeout(self, tmp_path: Path) -> None:
+    def test_uses_default_timeout(self, tmp_path: Path, mock_backend: MockBackend) -> None:
         """Test that run_dry uses DRY_RUN_TIMEOUT_SECONDS by default."""
         script = tmp_path / "dry_run.py"
         script.write_text("print('dry run')")
         mocks_dir = tmp_path / "mocks"
         mocks_dir.mkdir()
 
-        with patch("raw.engine.execution.default_backend") as mock_backend:
-            mock_backend.run.return_value = RunResult(
-                exit_code=0,
-                stdout="dry run",
-                stderr="",
-                duration_seconds=0.1,
-            )
+        run_dry(tmp_path)
 
-            run_dry(tmp_path)
+        assert len(mock_backend.calls) == 1
+        assert mock_backend.calls[0]["timeout"] == DRY_RUN_TIMEOUT_SECONDS
 
-            mock_backend.run.assert_called_once()
-            call_kwargs = mock_backend.run.call_args[1]
-            assert call_kwargs["timeout"] == DRY_RUN_TIMEOUT_SECONDS
-
-    def test_custom_timeout_overrides_default(self, tmp_path: Path) -> None:
+    def test_custom_timeout_overrides_default(self, tmp_path: Path, mock_backend: MockBackend) -> None:
         """Test that custom timeout overrides default."""
         script = tmp_path / "dry_run.py"
         script.write_text("print('dry run')")
         mocks_dir = tmp_path / "mocks"
         mocks_dir.mkdir()
 
-        with patch("raw.engine.execution.default_backend") as mock_backend:
-            mock_backend.run.return_value = RunResult(
-                exit_code=0,
-                stdout="dry run",
-                stderr="",
-                duration_seconds=0.1,
-            )
+        run_dry(tmp_path, timeout=120.0)
 
-            run_dry(tmp_path, timeout=120.0)
+        assert len(mock_backend.calls) == 1
+        assert mock_backend.calls[0]["timeout"] == 120.0
 
-            mock_backend.run.assert_called_once()
-            call_kwargs = mock_backend.run.call_args[1]
-            assert call_kwargs["timeout"] == 120.0
-
-    def test_warns_when_mocks_missing(self, tmp_path: Path) -> None:
+    def test_warns_when_mocks_missing(self, tmp_path: Path, mock_backend: MockBackend) -> None:
         """Test that run_dry warns when mocks/ directory is missing."""
         script = tmp_path / "dry_run.py"
         script.write_text("print('dry run')")
         # Note: NOT creating mocks/ directory
 
-        with patch("raw.engine.execution.default_backend") as mock_backend:
-            mock_backend.run.return_value = RunResult(
-                exit_code=0,
-                stdout="dry run",
-                stderr="",
-                duration_seconds=0.1,
-            )
+        result = run_dry(tmp_path)
 
-            result = run_dry(tmp_path)
+        assert "Warning: mocks/ directory not found" in result.stderr
 
-            assert "Warning: mocks/ directory not found" in result.stderr
-
-    def test_no_warning_when_mocks_exists(self, tmp_path: Path) -> None:
+    def test_no_warning_when_mocks_exists(self, tmp_path: Path, mock_backend: MockBackend) -> None:
         """Test no warning when mocks/ directory exists."""
         script = tmp_path / "dry_run.py"
         script.write_text("print('dry run')")
         mocks_dir = tmp_path / "mocks"
         mocks_dir.mkdir()
 
-        with patch("raw.engine.execution.default_backend") as mock_backend:
-            mock_backend.run.return_value = RunResult(
-                exit_code=0,
-                stdout="dry run",
-                stderr="",
-                duration_seconds=0.1,
-            )
+        result = run_dry(tmp_path)
 
-            result = run_dry(tmp_path)
-
-            assert "Warning: mocks/ directory not found" not in result.stderr
+        assert "Warning: mocks/ directory not found" not in result.stderr
 
     def test_no_warning_on_failure(self, tmp_path: Path) -> None:
         """Test that warning is not prepended on failure."""
@@ -241,16 +241,67 @@ class TestRunDry:
         script.write_text("raise Exception('fail')")
         # Note: NOT creating mocks/ directory
 
-        with patch("raw.engine.execution.default_backend") as mock_backend:
-            mock_backend.run.return_value = RunResult(
-                exit_code=1,
-                stdout="",
-                stderr="Exception: fail",
-                duration_seconds=0.1,
-            )
+        # Use a failing mock backend
+        fail_result = RunResult(
+            exit_code=1,
+            stdout="",
+            stderr="Exception: fail",
+            duration_seconds=0.1,
+        )
+        fail_backend = MockBackend(fail_result)
+        old_backend = get_default_backend()
+        set_default_backend(fail_backend)
 
+        try:
             result = run_dry(tmp_path)
 
             # Warning should not be prepended to error output
             assert "Warning: mocks/ directory not found" not in result.stderr
             assert result.stderr == "Exception: fail"
+        finally:
+            set_default_backend(old_backend)
+
+
+class TestWorkflowRunner:
+    """Tests for WorkflowRunner class with dependency injection."""
+
+    def test_runner_with_injected_backend(self, tmp_path: Path) -> None:
+        """Test that WorkflowRunner works with injected backend."""
+        from raw.engine.backends import LocalRunStorage
+        from raw.engine.runner import WorkflowRunner
+
+        script = tmp_path / "run.py"
+        script.write_text("print('hello')")
+
+        result = RunResult(exit_code=0, stdout="hello", stderr="", duration_seconds=0.1)
+        mock_backend = MockBackend(result)
+        storage = LocalRunStorage()
+
+        runner = WorkflowRunner(backend=mock_backend, storage=storage)
+        runner.run(tmp_path, isolate_run=False)
+
+        assert len(mock_backend.calls) == 1
+        assert mock_backend.calls[0]["script_path"] == script
+
+    def test_runner_creates_run_directory(self, tmp_path: Path) -> None:
+        """Test that runner creates run directory when isolate_run=True."""
+        from raw.engine.backends import LocalRunStorage
+        from raw.engine.runner import WorkflowRunner
+
+        script = tmp_path / "run.py"
+        script.write_text("print('hello')")
+
+        result = RunResult(exit_code=0, stdout="hello", stderr="", duration_seconds=0.1)
+        mock_backend = MockBackend(result)
+        storage = LocalRunStorage()
+
+        runner = WorkflowRunner(backend=mock_backend, storage=storage)
+        runner.run(tmp_path, isolate_run=True)
+
+        # Verify run directory was created
+        runs_dir = tmp_path / "runs"
+        assert runs_dir.exists()
+        run_dirs = list(runs_dir.iterdir())
+        assert len(run_dirs) == 1
+        assert (run_dirs[0] / "manifest.json").exists()
+        assert (run_dirs[0] / "output.log").exists()
