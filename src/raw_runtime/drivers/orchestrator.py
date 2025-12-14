@@ -5,8 +5,14 @@ import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from raw_runtime.protocols.orchestrator import OrchestratorRunInfo, OrchestratorRunStatus
+
+if TYPE_CHECKING:
+    import httpx
 
 
 class LocalOrchestrator:
@@ -177,6 +183,28 @@ class HttpOrchestrator:
             self._client.close()
             self._client = None
 
+    @retry(
+        retry=retry_if_exception_type(Exception),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        reraise=True,
+    )
+    def _request_with_retry(
+        self, method: str, url: str, **kwargs: dict
+    ) -> "httpx.Response":
+        """Make HTTP request with automatic retry on transient failures.
+
+        Uses exponential backoff: 1s, 2s, 4s (max 10s) between retries.
+        Retries up to 3 times on any exception (network errors, timeouts).
+        """
+        client = self._get_client()
+        if method == "GET":
+            return client.get(url, **kwargs)
+        elif method == "POST":
+            return client.post(url, **kwargs)
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+
     @property
     def server_url(self) -> str:
         """Get the server URL."""
@@ -211,7 +239,7 @@ class HttpOrchestrator:
         payload = {"args": args or []}
 
         try:
-            response = self._get_client().post(url, json=payload)
+            response = self._request_with_retry("POST", url, json=payload)
             response.raise_for_status()
             data = response.json()
 
@@ -236,7 +264,7 @@ class HttpOrchestrator:
     def get_status(self, run_id: str) -> OrchestratorRunInfo:
         """Get run status from server."""
         url = f"{self._server_url}/runs"
-        response = self._get_client().get(url)
+        response = self._request_with_retry("GET", url)
         response.raise_for_status()
 
         for run in response.json():
@@ -282,7 +310,7 @@ class HttpOrchestrator:
     ) -> list[OrchestratorRunInfo]:
         """List runs from server."""
         url = f"{self._server_url}/runs"
-        response = self._get_client().get(url)
+        response = self._request_with_retry("GET", url)
         response.raise_for_status()
 
         runs = []
