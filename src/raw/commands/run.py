@@ -1,8 +1,6 @@
 """Run command implementation."""
 
-from pathlib import Path
-
-import click
+from typing import Any, Callable
 
 from raw.discovery.display import (
     console,
@@ -17,11 +15,11 @@ from raw.scaffold.dry_run import generate_dry_run_template
 
 
 def run_command(
-    ctx: click.Context,
+    ctx: Any,
     workflow_id: str | None,
     dry: bool,
     init: bool,
-    prompt_workflow_selection: callable,
+    prompt_workflow_selection: Callable[[str], str | None],
 ) -> None:
     """Run a workflow.
 

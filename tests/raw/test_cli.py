@@ -3,16 +3,16 @@
 import pytest
 from pathlib import Path
 
-from click.testing import CliRunner
+from typer.testing import CliRunner
 
-from raw.cli import cli
+from raw.cli import app
 from raw.scaffold.init import sanitize_tool_name
 
 
 def test_version() -> None:
     """Test --version flag."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["--version"])
+    result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert "0.1.0" in result.output
 
@@ -20,7 +20,7 @@ def test_version() -> None:
 def test_help() -> None:
     """Test --help flag."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["--help"])
+    result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "RAW - Run Agentic Workflows" in result.output
 
@@ -29,7 +29,7 @@ def test_init_command(tmp_path: Path) -> None:
     """Test init command."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(cli, ["init"])
+        result = runner.invoke(app, ["init"])
         assert result.exit_code == 0
         assert "Initialized RAW" in result.output
 
@@ -57,9 +57,9 @@ def test_init_command_already_initialized(tmp_path: Path) -> None:
     """Test init command when already initialized."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
+        runner.invoke(app, ["init"])
 
-        result = runner.invoke(cli, ["init"])
+        result = runner.invoke(app, ["init"])
         assert result.exit_code == 0
         assert "already initialized" in result.output
 
@@ -69,7 +69,7 @@ def test_onboard_command(tmp_path: Path) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
         # Provide 'y' input to confirm creation
-        result = runner.invoke(cli, ["onboard"], input="y\n")
+        result = runner.invoke(app, ["onboard"], input="y\n")
         assert result.exit_code == 0
         assert "AGENTS.md" in result.output
 
@@ -86,7 +86,7 @@ def test_prime_command_not_initialized(tmp_path: Path) -> None:
     """Test prime command when not initialized."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(cli, ["prime"])
+        result = runner.invoke(app, ["prime"])
         assert result.exit_code == 1
         assert "not initialized" in result.output
 
@@ -95,9 +95,9 @@ def test_prime_command_empty(tmp_path: Path) -> None:
     """Test prime command with no workflows or tools."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
+        runner.invoke(app, ["init"])
 
-        result = runner.invoke(cli, ["prime"])
+        result = runner.invoke(app, ["prime"])
         assert result.exit_code == 0
         assert "RAW Context" in result.output
         assert "Quick Reference" in result.output
@@ -108,11 +108,11 @@ def test_prime_command_with_content(tmp_path: Path) -> None:
     """Test prime command with workflows and tools."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "test-wf", "-i", "Test workflow intent"])
-        runner.invoke(cli, ["create", "test-tool", "--tool", "-d", "Test tool"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "test-wf", "-i", "Test workflow intent"])
+        runner.invoke(app, ["create", "test-tool", "--tool", "-d", "Test tool"])
 
-        result = runner.invoke(cli, ["prime"])
+        result = runner.invoke(app, ["prime"])
         assert result.exit_code == 0
         assert "Workflows (1)" in result.output
         assert "test-wf" in result.output
@@ -124,11 +124,11 @@ def test_create_command(tmp_path: Path) -> None:
     """Test create command with v0.2.0 prompt-first approach."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
+        runner.invoke(app, ["init"])
 
         # v0.2.0: create draft workflow with intent
         result = runner.invoke(
-            cli,
+            app,
             ["create", "test-workflow", "--intent", "Analyze stock prices"],
         )
         assert result.exit_code == 0
@@ -149,9 +149,9 @@ def test_create_command_scaffold(tmp_path: Path) -> None:
     """Test create command with legacy scaffold mode."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
+        runner.invoke(app, ["init"])
 
-        result = runner.invoke(cli, ["create", "test-workflow", "--scaffold"])
+        result = runner.invoke(app, ["create", "test-workflow", "--scaffold"])
         assert result.exit_code == 0
         assert "Workflow created successfully" in result.output
 
@@ -167,7 +167,7 @@ def test_run_command_not_found() -> None:
     """Test run command with non-existent workflow."""
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(cli, ["run", "nonexistent-id"])
+        result = runner.invoke(app, ["run", "nonexistent-id"])
         assert result.exit_code == 1
         assert "Workflow not found" in result.output
 
@@ -176,7 +176,7 @@ def test_show_runs_command_not_found() -> None:
     """Test show --runs command with non-existent workflow."""
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(cli, ["show", "nonexistent-id", "--runs"])
+        result = runner.invoke(app, ["show", "nonexistent-id", "--runs"])
         assert result.exit_code == 1
         assert "Workflow not found" in result.output
 
@@ -185,7 +185,7 @@ def test_list_command_empty() -> None:
     """Test list command with no workflows."""
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(cli, ["list"])
+        result = runner.invoke(app, ["list"])
         assert result.exit_code == 0
         assert "No workflows found" in result.output
 
@@ -195,10 +195,10 @@ def test_list_command_with_workflows(tmp_path: Path) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
         # Init and create a workflow
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "my-workflow", "-i", "Test workflow"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "my-workflow", "-i", "Test workflow"])
 
-        result = runner.invoke(cli, ["list"])
+        result = runner.invoke(app, ["list"])
         assert result.exit_code == 0
         assert "my-workflow" in result.output
 
@@ -208,15 +208,15 @@ def test_run_dry_command(tmp_path: Path) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
         # Init and create workflow using scaffold mode (has dry_run.py)
-        runner.invoke(cli, ["init"])
-        create_result = runner.invoke(cli, ["create", "test-wf", "--scaffold"])
+        runner.invoke(app, ["init"])
+        create_result = runner.invoke(app, ["create", "test-wf", "--scaffold"])
         assert create_result.exit_code == 0
 
         workflows_dir = Path(".raw/workflows")
         workflow_dirs = list(workflows_dir.iterdir())
         workflow_id = workflow_dirs[0].name
 
-        dry_run_result = runner.invoke(cli, ["run", workflow_id, "--dry"])
+        dry_run_result = runner.invoke(app, ["run", workflow_id, "--dry"])
         # Should complete (even if script has issues, the command itself should work)
         assert "Dry-run workflow" in dry_run_result.output
 
@@ -226,14 +226,14 @@ def test_create_and_show_runs_no_history(tmp_path: Path) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
         # Init and create workflow
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "test-wf", "-i", "Test intent"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "test-wf", "-i", "Test intent"])
 
         workflows_dir = Path(".raw/workflows")
         workflow_dirs = list(workflows_dir.iterdir())
         workflow_id = workflow_dirs[0].name
 
-        status_result = runner.invoke(cli, ["show", workflow_id, "--runs"])
+        status_result = runner.invoke(app, ["show", workflow_id, "--runs"])
         assert status_result.exit_code == 0
         assert "No execution history" in status_result.output
 
@@ -242,11 +242,11 @@ def test_create_tool_command(tmp_path: Path) -> None:
     """Test create --tool command creates scaffold only."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
+        runner.invoke(app, ["init"])
 
         # Input name uses hyphen, but tool directory uses underscore (Python module)
         result = runner.invoke(
-            cli,
+            app,
             ["create", "my-tool", "--tool", "-d", "A test tool"],
         )
         assert result.exit_code == 0
@@ -266,11 +266,11 @@ def test_create_tool_duplicate(tmp_path: Path) -> None:
     """Test create --tool fails for duplicate tool name."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "my_tool", "--tool", "-d", "First tool"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "my_tool", "--tool", "-d", "First tool"])
 
         result = runner.invoke(
-            cli,
+            app,
             ["create", "my_tool", "--tool", "-d", "Duplicate tool"],
         )
         assert result.exit_code == 1
@@ -302,11 +302,11 @@ def test_list_tools_command(tmp_path: Path) -> None:
     """Test list tools command."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "tool-one", "--tool", "-d", "First tool"])
-        runner.invoke(cli, ["create", "tool-two", "--tool", "-d", "Second tool"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "tool-one", "--tool", "-d", "First tool"])
+        runner.invoke(app, ["create", "tool-two", "--tool", "-d", "Second tool"])
 
-        result = runner.invoke(cli, ["list", "tools"])
+        result = runner.invoke(app, ["list", "tools"])
         assert result.exit_code == 0
         assert "tool_one" in result.output
         assert "tool_two" in result.output
@@ -316,13 +316,13 @@ def test_publish_command(tmp_path: Path) -> None:
     """Test publish command."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "test-wf", "--scaffold"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "test-wf", "--scaffold"])
 
         workflows_dir = Path(".raw/workflows")
         workflow_id = list(workflows_dir.iterdir())[0].name
 
-        result = runner.invoke(cli, ["publish", workflow_id])
+        result = runner.invoke(app, ["publish", workflow_id])
         assert result.exit_code == 0
         assert "Workflow published" in result.output
 
@@ -331,13 +331,13 @@ def test_publish_fails_without_code(tmp_path: Path) -> None:
     """Test publish fails for draft workflow without generated code."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "test-wf", "-i", "Test intent"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "test-wf", "-i", "Test intent"])
 
         workflows_dir = Path(".raw/workflows")
         workflow_id = list(workflows_dir.iterdir())[0].name
 
-        result = runner.invoke(cli, ["publish", workflow_id])
+        result = runner.invoke(app, ["publish", workflow_id])
         assert result.exit_code == 1
         assert "no generated code" in result.output
 
@@ -346,15 +346,15 @@ def test_create_from_command(tmp_path: Path) -> None:
     """Test create --from command (duplicates workflow)."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "test-wf", "--scaffold"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "test-wf", "--scaffold"])
 
         workflows_dir = Path(".raw/workflows")
         original_id = list(workflows_dir.iterdir())[0].name
 
-        runner.invoke(cli, ["publish", original_id])
+        runner.invoke(app, ["publish", original_id])
 
-        result = runner.invoke(cli, ["create", "new-wf", "--from", original_id])
+        result = runner.invoke(app, ["create", "new-wf", "--from", original_id])
         assert result.exit_code == 0
         assert "Workflow duplicated" in result.output
 
@@ -365,8 +365,8 @@ def test_run_dry_init(tmp_path: Path) -> None:
     """Test run --dry --init generates template."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "test-wf", "-i", "Test intent"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "test-wf", "-i", "Test intent"])
 
         workflows_dir = Path(".raw/workflows")
         workflow_id = list(workflows_dir.iterdir())[0].name
@@ -374,7 +374,7 @@ def test_run_dry_init(tmp_path: Path) -> None:
 
         assert not (workflow_dir / "dry_run.py").exists()
 
-        result = runner.invoke(cli, ["run", workflow_id, "--dry", "--init"])
+        result = runner.invoke(app, ["run", workflow_id, "--dry", "--init"])
         assert result.exit_code == 0
         assert "Generated dry_run.py" in result.output
 
@@ -387,13 +387,13 @@ def test_run_dry_no_script_error(tmp_path: Path) -> None:
     """Test run --dry without dry_run.py shows helpful error."""
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        runner.invoke(cli, ["init"])
-        runner.invoke(cli, ["create", "test-wf", "-i", "Test intent"])
+        runner.invoke(app, ["init"])
+        runner.invoke(app, ["create", "test-wf", "-i", "Test intent"])
 
         workflows_dir = Path(".raw/workflows")
         workflow_id = list(workflows_dir.iterdir())[0].name
 
-        result = runner.invoke(cli, ["run", workflow_id, "--dry"])
+        result = runner.invoke(app, ["run", workflow_id, "--dry"])
         assert result.exit_code == 1
         assert "dry_run.py not found" in result.output
         assert "--init" in result.output

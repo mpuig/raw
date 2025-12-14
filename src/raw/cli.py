@@ -1,10 +1,12 @@
 """RAW CLI - Main entry point.
 
-This module defines the Click command structure and argument parsing.
+Uses Typer for argument parsing with automatic shell completion.
 Business logic is delegated to modules in raw.commands.
 """
 
-import click
+from typing import Annotated, Optional
+
+import typer
 from rich.prompt import Prompt
 
 from raw import __version__
@@ -30,6 +32,21 @@ from raw.commands import (
 from raw.discovery.display import console
 from raw.discovery.workflow import list_workflows
 from raw.scaffold.init import list_tools
+
+app = typer.Typer(
+    help="RAW - Run Agentic Workflows.\n\nAgent-first workflow orchestration for Claude Code.",
+    no_args_is_help=True,
+)
+
+hooks_app = typer.Typer(help="Manage Claude Code hooks for automatic context injection.")
+app.add_typer(hooks_app, name="hooks")
+
+
+def version_callback(value: bool) -> None:
+    """Print version and exit."""
+    if value:
+        typer.echo(f"raw {__version__}")
+        raise typer.Exit()
 
 
 def _prompt_workflow_selection(action: str = "select") -> str | None:
@@ -73,36 +90,47 @@ def _prompt_tool_selection(action: str = "select") -> str | None:
     return tool_list[int(choice) - 1]["name"]
 
 
-@click.group()
-@click.version_option(version=__version__, prog_name="raw")
-def cli() -> None:
-    """RAW - Run Agentic Workflows.
-
-    Agent-first workflow orchestration for Claude Code.
-    """
+@app.callback()
+def main(
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            "-v",
+            callback=version_callback,
+            is_eager=True,
+            help="Show version and exit.",
+        ),
+    ] = False,
+) -> None:
+    """RAW - Run Agentic Workflows."""
     pass
 
 
-@cli.command()
-@click.argument("name")
-@click.option("--intent", "-i", help="Workflow intent (will prompt if not provided)")
-@click.option("--from", "from_workflow", help="Duplicate from existing workflow ID")
-@click.option("--tool", "-t", is_flag=True, help="Create a reusable tool instead of a workflow")
-@click.option("--description", "-d", help="Tool description (required with --tool)")
-@click.option(
-    "--scaffold", is_flag=True, hidden=True, help="Create v0.1.0 scaffold (deprecated)"
-)
+@app.command()
 def create(
-    name: str,
-    intent: str | None,
-    from_workflow: str | None,
-    tool: bool,
-    description: str | None,
-    scaffold: bool,
+    name: Annotated[str, typer.Argument(help="Short name (e.g., stock-analysis, fetch_prices)")],
+    intent: Annotated[
+        Optional[str],
+        typer.Option("--intent", "-i", help="Workflow intent (will prompt if not provided)"),
+    ] = None,
+    from_workflow: Annotated[
+        Optional[str],
+        typer.Option("--from", help="Duplicate from existing workflow ID"),
+    ] = None,
+    tool: Annotated[
+        bool, typer.Option("--tool", "-t", help="Create a reusable tool instead of a workflow")
+    ] = False,
+    description: Annotated[
+        Optional[str],
+        typer.Option("--description", "-d", help="Tool description (required with --tool)"),
+    ] = None,
+    scaffold: Annotated[
+        bool,
+        typer.Option("--scaffold", hidden=True, help="Create v0.1.0 scaffold (deprecated)"),
+    ] = False,
 ) -> None:
     """Create a new workflow or tool.
-
-    NAME is the short name (e.g., stock-analysis, fetch_prices).
 
     Examples:
         raw create my-workflow --intent "Fetch and analyze data"
@@ -112,16 +140,22 @@ def create(
     create_command(name, intent, from_workflow, tool, description, scaffold)
 
 
-@cli.command(context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
-@click.argument("workflow_id", required=False)
-@click.option("--dry", is_flag=True, help="Run with mocked data (uses dry_run.py)")
-@click.option("--init", is_flag=True, help="Generate dry_run.py template (use with --dry)")
-@click.pass_context
-def run(ctx: click.Context, workflow_id: str | None, dry: bool, init: bool) -> None:
+@app.command()
+def run(
+    ctx: typer.Context,
+    workflow_id: Annotated[
+        Optional[str],
+        typer.Argument(help="Workflow identifier (full or partial). Prompts if not provided."),
+    ] = None,
+    dry: Annotated[
+        bool, typer.Option("--dry", help="Run with mocked data (uses dry_run.py)")
+    ] = False,
+    init: Annotated[
+        bool, typer.Option("--init", help="Generate dry_run.py template (use with --dry)")
+    ] = False,
+) -> None:
     """Run a workflow.
 
-    WORKFLOW_ID is the workflow identifier (full or partial).
-    If not provided, prompts for selection.
     Additional arguments are passed to the workflow script.
 
     Use --dry to run with mocked data (executes dry_run.py).
@@ -130,17 +164,15 @@ def run(ctx: click.Context, workflow_id: str | None, dry: bool, init: bool) -> N
     run_command(ctx, workflow_id, dry, init, _prompt_workflow_selection)
 
 
-@cli.command("list")
-@click.argument("what", default="workflows", required=False)
-def list_cmd(what: str) -> None:
-    """List workflows.
-
-    Lists all workflows in the project.
-    """
+@app.command("list")
+def list_cmd(
+    what: Annotated[str, typer.Argument(help="What to list: workflows or tools")] = "workflows",
+) -> None:
+    """List workflows or tools."""
     list_command(what)
 
 
-@cli.command()
+@app.command()
 def init() -> None:
     """Initialize RAW in the current project.
 
@@ -150,14 +182,19 @@ def init() -> None:
     init_command()
 
 
-@cli.command()
-@click.argument("source")
-@click.option("--name", "-n", help="Override tool name (derived from URL if not provided)")
-@click.option("--ref", "-r", help="Git ref (tag, branch, or commit)")
-def install(source: str, name: str | None, ref: str | None) -> None:
+@app.command()
+def install(
+    source: Annotated[str, typer.Argument(help="Git repository URL")],
+    name: Annotated[
+        Optional[str],
+        typer.Option("--name", "-n", help="Override tool name (derived from URL if not provided)"),
+    ] = None,
+    ref: Annotated[
+        Optional[str],
+        typer.Option("--ref", "-r", help="Git ref (tag, branch, or commit)"),
+    ] = None,
+) -> None:
     """Install a tool from a git URL.
-
-    SOURCE is the git repository URL.
 
     Examples:
         raw install https://github.com/user/tool-repo
@@ -167,12 +204,11 @@ def install(source: str, name: str | None, ref: str | None) -> None:
     install_command(source, name, ref)
 
 
-@cli.command()
-@click.argument("name")
-def uninstall(name: str) -> None:
+@app.command()
+def uninstall(
+    name: Annotated[str, typer.Argument(help="Tool name to uninstall")],
+) -> None:
     """Uninstall a tool.
-
-    NAME is the tool name to uninstall.
 
     Example:
         raw uninstall my_tool
@@ -180,7 +216,7 @@ def uninstall(name: str) -> None:
     uninstall_command(name)
 
 
-@cli.command()
+@app.command()
 def onboard() -> None:
     """Display RAW documentation for AI agents.
 
@@ -190,7 +226,7 @@ def onboard() -> None:
     onboard_command()
 
 
-@cli.command()
+@app.command()
 def prime() -> None:
     """Output context for AI agents.
 
@@ -206,13 +242,7 @@ def prime() -> None:
     prime_command()
 
 
-@cli.group()
-def hooks() -> None:
-    """Manage Claude Code hooks for automatic context injection."""
-    pass
-
-
-@hooks.command("install")
+@hooks_app.command("install")
 def hooks_install() -> None:
     """Install RAW hooks into Claude Code (project-level).
 
@@ -224,7 +254,7 @@ def hooks_install() -> None:
     hooks_install_command()
 
 
-@hooks.command("uninstall")
+@hooks_app.command("uninstall")
 def hooks_uninstall() -> None:
     """Remove RAW hooks from Claude Code.
 
@@ -234,14 +264,17 @@ def hooks_uninstall() -> None:
     hooks_uninstall_command()
 
 
-@cli.command()
-@click.argument("identifier", required=False)
-@click.option("--runs", "-r", is_flag=True, help="Show execution history instead of details")
-def show(identifier: str | None, runs: bool) -> None:
+@app.command()
+def show(
+    identifier: Annotated[
+        Optional[str],
+        typer.Argument(help="Workflow ID or partial match. Prompts if not provided."),
+    ] = None,
+    runs: Annotated[
+        bool, typer.Option("--runs", "-r", help="Show execution history instead of details")
+    ] = False,
+) -> None:
     """Show details for a workflow or tool.
-
-    IDENTIFIER is a workflow ID or partial match.
-    If not provided, prompts for selection.
 
     Use --runs to see execution history instead of workflow details.
 
@@ -253,13 +286,14 @@ def show(identifier: str | None, runs: bool) -> None:
     show_command(identifier, _prompt_workflow_selection, runs)
 
 
-@cli.command()
-@click.argument("workflow_id", required=False)
-def publish(workflow_id: str | None) -> None:
+@app.command()
+def publish(
+    workflow_id: Annotated[
+        Optional[str],
+        typer.Argument(help="Workflow identifier (full or partial). Prompts if not provided."),
+    ] = None,
+) -> None:
     """Publish a workflow, making it immutable.
-
-    WORKFLOW_ID is the workflow identifier (full or partial).
-    If not provided, prompts for selection.
 
     Publishing freezes the workflow and pins all tool versions.
     After publishing, the workflow cannot be modified.
@@ -268,12 +302,12 @@ def publish(workflow_id: str | None) -> None:
     publish_command(workflow_id, _prompt_workflow_selection)
 
 
-@cli.command()
-@click.argument("query")
-def search(query: str) -> None:
+@app.command()
+def search(
+    query: Annotated[str, typer.Argument(help="Search query describing what you're looking for")],
+) -> None:
     """Search for tools by description.
 
-    QUERY is the search query describing what you're looking for.
     Always search before creating new tools to avoid duplicates.
 
     Examples:
@@ -283,10 +317,15 @@ def search(query: str) -> None:
     search_command(query)
 
 
-@cli.command()
-@click.option("--host", "-h", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
-@click.option("--port", "-p", default=8000, type=int, help="Port to listen on (default: 8000)")
-def serve(host: str, port: int) -> None:
+@app.command()
+def serve(
+    host: Annotated[
+        str, typer.Option("--host", "-h", help="Host to bind to")
+    ] = "0.0.0.0",
+    port: Annotated[
+        int, typer.Option("--port", "-p", help="Port to listen on")
+    ] = 8000,
+) -> None:
     """Start RAW daemon server for webhooks and approvals.
 
     Runs a FastAPI server that provides:
@@ -301,31 +340,45 @@ def serve(host: str, port: int) -> None:
     serve_command(host, port)
 
 
-@cli.command(context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
-@click.argument("workflow_id", required=False)
-@click.pass_context
-def trigger(ctx: click.Context, workflow_id: str | None) -> None:
+@app.command()
+def trigger(
+    ctx: typer.Context,
+    workflow_id: Annotated[
+        Optional[str],
+        typer.Argument(help="Workflow identifier (full or partial)"),
+    ] = None,
+) -> None:
     """Trigger a workflow via the RAW server.
 
-    WORKFLOW_ID is the workflow identifier (full or partial).
     Additional arguments are passed to the workflow.
 
     Examples:
         raw trigger my-workflow
         raw trigger my-workflow --ticker AAPL
     """
-    trigger_command(workflow_id, ctx.args, _prompt_workflow_selection)
+    args = ctx.args if ctx.args else []
+    trigger_command(workflow_id, args, _prompt_workflow_selection)
 
 
-@cli.command()
-@click.argument("workflow_id", required=False)
-@click.option("--run", "-r", "run_id", help="Specific run ID (defaults to latest)")
-@click.option("--follow", "-f", is_flag=True, help="Follow log output")
-@click.option("--lines", "-n", default=50, help="Number of lines to show (default: 50)")
-def logs(workflow_id: str | None, run_id: str | None, follow: bool, lines: int) -> None:
+@app.command()
+def logs(
+    workflow_id: Annotated[
+        Optional[str],
+        typer.Argument(help="Workflow identifier (full or partial)"),
+    ] = None,
+    run_id: Annotated[
+        Optional[str],
+        typer.Option("--run", "-r", help="Specific run ID (defaults to latest)"),
+    ] = None,
+    follow: Annotated[
+        bool, typer.Option("--follow", "-f", help="Follow log output")
+    ] = False,
+    lines: Annotated[
+        int, typer.Option("--lines", "-n", help="Number of lines to show")
+    ] = 50,
+) -> None:
     """View workflow execution logs.
 
-    WORKFLOW_ID is the workflow identifier (full or partial).
     Shows the most recent run by default.
 
     Examples:
@@ -336,13 +389,18 @@ def logs(workflow_id: str | None, run_id: str | None, follow: bool, lines: int) 
     logs_command(workflow_id, run_id, follow, lines, _prompt_workflow_selection)
 
 
-@cli.command()
-@click.argument("run_id", required=False)
-@click.option("--all", "all_runs", is_flag=True, help="Stop all running workflows")
-def stop(run_id: str | None, all_runs: bool) -> None:
+@app.command()
+def stop(
+    run_id: Annotated[
+        Optional[str],
+        typer.Argument(help="Run identifier to stop"),
+    ] = None,
+    all_runs: Annotated[
+        bool, typer.Option("--all", help="Stop all running workflows")
+    ] = False,
+) -> None:
     """Stop running workflows.
 
-    RUN_ID is the run identifier to stop.
     Use --all to stop all running workflows.
 
     Examples:
@@ -353,5 +411,8 @@ def stop(run_id: str | None, all_runs: bool) -> None:
     stop_command(run_id, all_runs)
 
 
+# For backward compatibility with entry point
+cli = app
+
 if __name__ == "__main__":
-    cli()
+    app()
