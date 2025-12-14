@@ -2,12 +2,10 @@
 
 import sys
 
-from rich.console import Console
 from rich.panel import Panel
 
+from raw.discovery.display import console
 from raw.discovery.workflow import find_workflow
-
-console = Console()
 
 
 def logs_command(

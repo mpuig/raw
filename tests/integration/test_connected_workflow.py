@@ -19,18 +19,11 @@ pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
 
 
-@pytest.fixture
-def server_port():
-    """Get a free port for testing."""
-    import socket
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
+# free_port fixture is provided by tests/conftest.py
 
 
 @pytest.fixture
-def raw_server(server_port, tmp_path):
+def raw_server(free_port, tmp_path):
     """Start RAW server in background."""
     # Create minimal .raw structure
     raw_dir = tmp_path / ".raw"
@@ -39,7 +32,7 @@ def raw_server(server_port, tmp_path):
     (raw_dir / "workflows").mkdir()
 
     env = os.environ.copy()
-    env["RAW_PORT"] = str(server_port)
+    env["RAW_PORT"] = str(free_port)
 
     proc = subprocess.Popen(
         [
@@ -51,7 +44,7 @@ def raw_server(server_port, tmp_path):
             "--host",
             "127.0.0.1",
             "--port",
-            str(server_port),
+            str(free_port),
         ],
         cwd=tmp_path,
         env=env,
@@ -60,7 +53,7 @@ def raw_server(server_port, tmp_path):
     )
 
     # Wait for server to start (use /api/status for JSON response)
-    base_url = f"http://127.0.0.1:{server_port}"
+    base_url = f"http://127.0.0.1:{free_port}"
     for _ in range(30):
         try:
             resp = httpx.get(f"{base_url}/api/status", timeout=1.0)

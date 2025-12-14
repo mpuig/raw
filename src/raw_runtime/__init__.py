@@ -109,6 +109,14 @@ from raw_runtime.orchestrator import (
     OrchestratorRunInfo,
     OrchestratorRunStatus,
 )
+from raw_runtime.protocols.logger import (
+    ListLogger,
+    NullLogger,
+    RichConsoleLogger,
+    WorkflowLogger,
+    get_logger,
+    set_logger,
+)
 from raw_runtime.secrets import (
     CachingSecretProvider,
     ChainedSecretProvider,
@@ -261,4 +269,11 @@ __all__ = [
     "set_telemetry_sink",
     "log_metric",
     "log_event",
+    # Logger protocol
+    "WorkflowLogger",
+    "RichConsoleLogger",
+    "NullLogger",
+    "ListLogger",
+    "get_logger",
+    "set_logger",
 ]

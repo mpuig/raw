@@ -122,28 +122,7 @@ class TestSubprocessBackend:
             assert result.stdout == ""  # Should handle None
 
 
-@pytest.fixture
-def mock_backend():
-    """Fixture that sets up and tears down a mock backend via Container."""
-    result = RunResult(
-        exit_code=0,
-        stdout="success",
-        stderr="",
-        duration_seconds=0.1,
-    )
-    backend = MockBackend(result)
-    Container.set_backend(backend)
-    yield backend
-    Container.reset()
-
-
-@pytest.fixture
-def mock_storage():
-    """Fixture that sets up and tears down a mock storage via Container."""
-    storage = MockStorage()
-    Container.set_storage(storage)
-    yield storage
-    Container.reset()
+# mock_backend and mock_storage fixtures are provided by tests/conftest.py
 
 
 class TestRunWorkflow:

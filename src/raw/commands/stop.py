@@ -4,9 +4,8 @@ import os
 import sys
 
 import httpx
-from rich.console import Console
 
-console = Console()
+from raw.discovery.display import console
 
 
 def stop_command(run_id: str | None, all_runs: bool) -> None:

@@ -4,11 +4,9 @@ import os
 import sys
 
 import httpx
-from rich.console import Console
 
+from raw.discovery.display import console
 from raw.discovery.workflow import find_workflow
-
-console = Console()
 
 
 def trigger_command(

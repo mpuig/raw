@@ -15,11 +15,22 @@ from rich.panel import Panel
 
 from raw_runtime.connection import init_connection, set_connection
 from raw_runtime.context import WorkflowContext, set_workflow_context
+from raw_runtime.protocols.logger import WorkflowLogger
 
 if TYPE_CHECKING:
     from raw_runtime.base import BaseWorkflow
 
 ParamsT = TypeVar("ParamsT", bound=BaseModel)
+
+
+class _ConsoleLogger:
+    """Adapter to make Rich Console conform to WorkflowLogger protocol."""
+
+    def __init__(self, console: Console) -> None:
+        self._console = console
+
+    def print(self, message: str) -> None:
+        self._console.print(message)
 
 
 class WorkflowEntrypoint:
@@ -32,13 +43,19 @@ class WorkflowEntrypoint:
     - Swapping console implementations
     """
 
-    def __init__(self, console: Console | None = None) -> None:
+    def __init__(
+        self,
+        console: Console | None = None,
+        logger: WorkflowLogger | None = None,
+    ) -> None:
         """Initialize entrypoint.
 
         Args:
             console: Rich console for output. Uses default if None.
+            logger: Logger for workflow output. If None, wraps the console.
         """
         self.console = console or Console()
+        self._logger = logger or _ConsoleLogger(self.console)
 
     def run(
         self,
@@ -150,7 +167,7 @@ class WorkflowEntrypoint:
         try:
             with context:
                 set_workflow_context(context)
-                workflow = workflow_class(params, context)
+                workflow = workflow_class(params, context, logger=self._logger)
 
                 workflow.log(f"Starting workflow: {workflow_name}")
                 workflow.log(f"Parameters: {params.model_dump()}")

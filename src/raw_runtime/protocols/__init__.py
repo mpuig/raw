@@ -29,6 +29,13 @@ __all__ = [
     "SecretProvider",
     "StorageBackend",
     "TelemetrySink",
+    # Logger protocol
+    "WorkflowLogger",
+    "RichConsoleLogger",
+    "NullLogger",
+    "ListLogger",
+    "get_logger",
+    "set_logger",
 ]
 
 
@@ -62,4 +69,15 @@ def __getattr__(name: str) -> type:
         from raw_runtime.protocols import telemetry
 
         return getattr(telemetry, name)
+    if name in (
+        "WorkflowLogger",
+        "RichConsoleLogger",
+        "NullLogger",
+        "ListLogger",
+        "get_logger",
+        "set_logger",
+    ):
+        from raw_runtime.protocols import logger
+
+        return getattr(logger, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

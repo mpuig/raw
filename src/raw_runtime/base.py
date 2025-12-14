@@ -32,13 +32,11 @@ from pathlib import Path
 from typing import Any, Generic, TypeVar, get_args, get_origin
 
 from pydantic import BaseModel
-from rich.console import Console
 
 from raw_runtime.context import WorkflowContext
+from raw_runtime.protocols.logger import WorkflowLogger, get_logger
 
 ParamsT = TypeVar("ParamsT", bound=BaseModel)
-
-console = Console()
 
 
 class BaseWorkflow(ABC, Generic[ParamsT]):
@@ -53,10 +51,22 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         results_dir: Path to the results directory
     """
 
-    def __init__(self, params: ParamsT, context: WorkflowContext | None = None) -> None:
-        """Initialize workflow with parameters."""
+    def __init__(
+        self,
+        params: ParamsT,
+        context: WorkflowContext | None = None,
+        logger: WorkflowLogger | None = None,
+    ) -> None:
+        """Initialize workflow with parameters.
+
+        Args:
+            params: Validated workflow parameters
+            context: Optional workflow execution context
+            logger: Optional logger for output (defaults to Rich console)
+        """
         self.params = params
         self.context = context
+        self._logger = logger or get_logger()
         self._results_dir: Path | None = None
         self._log_file: Path | None = None
 
@@ -106,7 +116,7 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         else:
             filepath.write_text(str(data))
 
-        console.print(f"  [green]✓[/] Saved {filename}")
+        self._logger.print(f"  [green]✓[/] Saved {filename}")
 
         # Log to file (without console output to avoid duplication)
         self._log_to_file(f"Saved file: {filepath}")
@@ -127,14 +137,14 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
             f.write(log_entry)
 
     def log(self, message: str) -> None:
-        """Log a message to the console and log file.
+        """Log a message to the output and log file.
 
-        Messages are printed to the console and appended to the log file
-        at logs/YYYYMMDDHHMMSS.log.
+        Messages are printed to the logger (console by default) and appended
+        to the log file at output.log.
         """
         from datetime import datetime, timezone
 
-        console.print(f"  {message}")
+        self._logger.print(f"  {message}")
 
         # Also write to log file with timestamp
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
