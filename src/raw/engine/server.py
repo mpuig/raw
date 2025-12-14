@@ -16,6 +16,11 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader
 
 from raw.discovery.workflow import find_workflow, list_workflows
+from raw.engine.server_dashboard import (
+    build_approvals_html,
+    build_runs_html,
+    build_workflows_html,
+)
 from raw.engine.server_models import (
     ApprovalRequest,
     CompleteRequest,
@@ -175,80 +180,29 @@ def create_app(server: RAWServer | None = None) -> Any:
     @app.get("/", response_class=HTMLResponse)
     async def dashboard() -> str:
         """HTML dashboard showing runs, approvals, and workflows."""
-        runs = server.run_registry.list_runs()
+        # Collect approval data
         approvals = []
         for run_id, waiting in server.run_registry.list_waiting():
             if waiting.event_type == "approval":
                 run = server.run_registry.get(run_id)
-                approvals.append(
-                    {
-                        "run_id": run_id,
-                        "workflow_id": run.workflow_id if run else "unknown",
-                        "step_name": waiting.step_name,
-                        "prompt": waiting.prompt or "Approval required",
-                        "options": waiting.options or ["approve", "reject"],
-                        "context": waiting.context,
-                    }
-                )
-        workflows = list_workflows()
+                approvals.append({
+                    "run_id": run_id,
+                    "workflow_id": run.workflow_id if run else "unknown",
+                    "step_name": waiting.step_name,
+                    "prompt": waiting.prompt or "Approval required",
+                    "options": waiting.options or ["approve", "reject"],
+                    "context": waiting.context,
+                })
 
-        # --- Build Approvals HTML (Cards) ---
-        approvals_html = ""
-        if approvals:
-            for a in approvals:
-                # Context Key-Values
-                ctx_html = ""
-                for k, v in a["context"].items():
-                    ctx_html += f'<div class="flex justify-between text-xs"><span class="text-dark-500">{k}:</span> <span class="text-brand-gray font-mono">{v}</span></div>'
-                
-                # Buttons
-                buttons = ""
-                for o in a["options"]:
-                    color_cls = "bg-brand-green hover:bg-green-600 text-white" if o == "approve" else "bg-brand-red hover:bg-red-600 text-white"
-                    if o not in ["approve", "reject"]:
-                        color_cls = "bg-dark-700 hover:bg-dark-600 text-brand-gray hover:text-white"
-                    
-                    buttons += (
-                        f'<button class="px-4 py-2 rounded text-sm font-medium transition-colors {color_cls}" '
-                        f'onclick="dashboard().approve(\'{a["run_id"]}\', \'{a["step_name"]}\')">{o.title()}</button>'
-                    )
-
-                approvals_html += f"""
-                <div class="bg-dark-800 border border-dark-600 rounded-lg p-5 flex flex-col shadow-lg shadow-black/20">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 class="text-base font-bold text-white mb-1">{a["workflow_id"]}</h3>
-                            <div class="text-xs font-mono text-dark-500">Step: {a["step_name"]}</div>
-                        </div>
-                        <span class="bg-brand-yellow/10 text-brand-yellow text-xs px-2 py-1 rounded border border-brand-yellow/20 animate-pulse">
-                            Waiting
-                        </span>
-                    </div>
-                    
-                    <div class="bg-dark-900/50 rounded p-3 mb-4 border border-dark-700">
-                        <p class="text-sm text-gray-300 font-medium mb-2">{a["prompt"]}</p>
-                        <div class="space-y-1 pt-2 border-t border-dark-700/50">
-                            {ctx_html}
-                        </div>
-                    </div>
-
-                    <div class="mt-auto flex gap-3">
-                        {buttons}
-                    </div>
-                </div>
-                """
-
-        # --- Build Runs HTML (Table Rows) ---
-        runs_html = ""
-        # Combine connected and legacy runs for display
+        # Collect run data (connected + legacy)
         all_runs = []
-        for r in runs:
+        for r in server.run_registry.list_runs():
             all_runs.append({
                 "id": r.run_id,
                 "wf": r.workflow_id,
                 "status": r.status,
                 "time": r.registered_at.strftime("%H:%M:%S"),
-                "mode": "connected"
+                "mode": "connected",
             })
         for r in server.active_runs.values():
             all_runs.append({
@@ -256,76 +210,22 @@ def create_app(server: RAWServer | None = None) -> Any:
                 "wf": r.workflow_id,
                 "status": r.status,
                 "time": r.started_at.strftime("%H:%M:%S"),
-                "mode": "subprocess"
+                "mode": "subprocess",
             })
 
-        if all_runs:
-            for r in all_runs:
-                # Status Colors
-                status_colors = {
-                    "running": "bg-brand-blue/20 text-brand-blue",
-                    "waiting": "bg-brand-yellow/20 text-brand-yellow",
-                    "completed": "bg-brand-green/20 text-brand-green",
-                    "success": "bg-brand-green/20 text-brand-green",
-                    "failed": "bg-brand-red/20 text-brand-red",
-                    "stale": "bg-dark-600 text-dark-400",
-                }
-                status_cls = status_colors.get(r["status"], "bg-dark-700 text-brand-gray")
-                
-                # Mode Icon
-                mode_icon = '<i class="fa-solid fa-network-wired" title="Connected"></i>' if r["mode"] == "connected" else '<i class="fa-solid fa-terminal" title="Subprocess"></i>'
-
-                runs_html += f"""
-                <tr class="hover:bg-dark-700/50 transition-colors group">
-                    <td class="px-4 py-3 font-mono text-xs text-brand-gray group-hover:text-gray-300">{r["id"][:8]}...</td>
-                    <td class="px-4 py-3 text-gray-300 font-medium">{r["wf"]}</td>
-                    <td class="px-4 py-3">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {status_cls}">
-                            {r["status"]}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-brand-gray text-xs">{r["time"]}</td>
-                    <td class="px-4 py-3 text-right text-dark-500 text-xs">
-                        {mode_icon}
-                    </td>
-                </tr>
-                """
-
-        # --- Build Workflows HTML (Grid Cards) ---
-        workflows_html = ""
-        if workflows:
-            for w in workflows:
-                name = w.get("name", w.get("id", "unknown"))
-                desc = w.get("intent", "No description provided.")
-                # Truncate desc
-                if len(desc) > 60: desc = desc[:57] + "..."
-                
-                workflows_html += f"""
-                <div class="bg-dark-800 border border-dark-600 rounded-lg p-4 hover:border-brand-blue/50 transition-all hover:-translate-y-0.5 cursor-pointer group">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="w-8 h-8 rounded bg-dark-700 flex items-center justify-center text-brand-gray group-hover:text-brand-blue group-hover:bg-brand-blue/10 transition-colors">
-                            <i class="fa-solid fa-cube"></i>
-                        </div>
-                        <span class="text-[10px] uppercase font-bold text-dark-500 bg-dark-900 px-1.5 py-0.5 rounded border border-dark-700">DRAFT</span>
-                    </div>
-                    <h3 class="text-sm font-bold text-gray-200 group-hover:text-white truncate mb-1">{name}</h3>
-                    <p class="text-xs text-brand-gray leading-relaxed">{desc}</p>
-                </div>
-                """
+        workflows = list_workflows()
 
         # Render dashboard template
         env = _get_jinja_env()
         template = env.get_template("dashboard.html")
-        html = template.render(
+        return template.render(
             approval_count=len(approvals),
-            approvals_html=approvals_html,
+            approvals_html=build_approvals_html(approvals),
             run_count=len(all_runs),
-            runs_html=runs_html,
+            runs_html=build_runs_html(all_runs),
             workflow_count=len(workflows),
-            workflows_html=workflows_html,
+            workflows_html=build_workflows_html(workflows),
         )
-
-        return html
 
     @app.get("/api/status")
     async def api_status() -> dict[str, Any]:

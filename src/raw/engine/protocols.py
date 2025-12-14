@@ -5,7 +5,7 @@ enabling dependency injection and testability.
 """
 
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -30,6 +30,7 @@ class RunResult(BaseModel):
     timed_out: bool = False
 
 
+@runtime_checkable
 class ExecutionBackend(Protocol):
     """Protocol for script execution backends.
 
@@ -48,6 +49,7 @@ class ExecutionBackend(Protocol):
         ...
 
 
+@runtime_checkable
 class RunStorage(Protocol):
     """Protocol for run directory and manifest management.
 

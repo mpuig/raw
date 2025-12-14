@@ -26,19 +26,15 @@ Usage:
         MyWorkflow.main()
 """
 
-import argparse
 import json
-import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Generic, TypeVar, get_args, get_origin
 
 from pydantic import BaseModel
 from rich.console import Console
-from rich.panel import Panel
 
-from raw_runtime.connection import init_connection, set_connection
-from raw_runtime.context import WorkflowContext, set_workflow_context
+from raw_runtime.context import WorkflowContext
 
 ParamsT = TypeVar("ParamsT", bound=BaseModel)
 
@@ -162,121 +158,15 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         )
 
     @classmethod
-    def _build_argparse(cls, params_class: type[BaseModel]) -> argparse.ArgumentParser:
-        """Build argparse from Pydantic model fields."""
-        parser = argparse.ArgumentParser(
-            description=params_class.__doc__ or f"Run {cls.__name__} workflow"
-        )
-
-        for field_name, field_info in params_class.model_fields.items():
-            arg_name = f"--{field_name.replace('_', '-')}"
-            kwargs: dict[str, Any] = {}
-
-            if field_info.description:
-                kwargs["help"] = field_info.description
-
-            has_default = field_info.default is not None or field_info.default_factory is not None
-            if not has_default and field_info.is_required():
-                kwargs["required"] = True
-            elif field_info.default is not None:
-                kwargs["default"] = field_info.default
-
-            field_type = field_info.annotation
-            if field_type is bool:
-                kwargs["action"] = "store_true"
-            elif field_type is int:
-                kwargs["type"] = int
-            elif field_type is float:
-                kwargs["type"] = float
-            elif field_type is list or get_origin(field_type) is list:
-                kwargs["nargs"] = "*"
-
-            parser.add_argument(arg_name, **kwargs)
-
-        return parser
-
-    @classmethod
     def main(cls, args: list[str] | None = None) -> None:
         """Main entry point for the workflow.
 
-        Handles argument parsing, context setup, server connection, execution,
-        and error handling. If RAW_SERVER_URL is set, connects to the server
-        for event-driven operation (approvals, webhooks).
+        Delegates to WorkflowEntrypoint which handles argument parsing,
+        context setup, server connection, execution, and error handling.
         """
-        from raw_runtime.env import load_dotenv
+        from raw_runtime.entrypoint import main_exit
 
-        load_dotenv()
-
-        params_class = cls._get_params_class()
-
-        parser = cls._build_argparse(params_class)
-        parsed = parser.parse_args(args)
-
-        params_dict = {k.replace("-", "_"): v for k, v in vars(parsed).items() if v is not None}
-
-        try:
-            params = params_class(**params_dict)
-        except Exception as e:
-            console.print(f"[red]Error:[/] Invalid parameters: {e}")
-            sys.exit(1)
-
-        workflow_name = cls.__name__
-        context = WorkflowContext(
-            workflow_id=workflow_name,
-            short_name=workflow_name,
-            parameters=params.model_dump(),
-            workflow_dir=Path.cwd(),
-        )
-
-        console.print()
-        console.print(Panel(f"[bold]{workflow_name}[/]", border_style="blue"))
-        console.print()
-
-        connection = init_connection(context.run_id, workflow_name)
-
-        exit_code = 1
-        try:
-            with context:
-                set_workflow_context(context)
-                workflow = cls(params, context)  # type: ignore[arg-type]
-
-                workflow.log(f"Starting workflow: {workflow_name}")
-                workflow.log(f"Parameters: {params.model_dump()}")
-
-                exit_code = workflow.run()
-
-                if exit_code == 0:
-                    workflow.log("Workflow completed successfully")
-                    context.finalize(status="success")
-                    console.print()
-                    console.print(
-                        Panel(
-                            "[bold green]Workflow completed successfully[/]", border_style="green"
-                        )
-                    )
-                else:
-                    workflow.log(f"Workflow failed with exit code: {exit_code}")
-                    context.finalize(status="failed", error=f"Exit code: {exit_code}")
-
-        except KeyboardInterrupt:
-            console.print("\n[yellow]Workflow cancelled[/]")
-            if "workflow" in locals():
-                workflow._log_to_file("Workflow cancelled by user")
-            context.finalize(status="cancelled")
-            exit_code = 130
-        except Exception as e:
-            console.print(f"\n[red]Error:[/] {e}")
-            if "workflow" in locals():
-                workflow._log_to_file(f"Workflow failed with error: {e}")
-            context.finalize(status="failed", error=str(e))
-            exit_code = 1
-        finally:
-            set_workflow_context(None)
-            if connection.is_connected:
-                connection.disconnect("success" if exit_code == 0 else "failed")
-            set_connection(None)
-
-        sys.exit(exit_code)
+        main_exit(cls, args)
 
 
 # Convenience re-export of step decorator

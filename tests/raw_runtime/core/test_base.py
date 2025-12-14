@@ -43,9 +43,12 @@ def test_get_params_class() -> None:
 
 
 def test_build_argparse() -> None:
-    """Test building argparse from Pydantic model."""
+    """Test building argparse from Pydantic model via entrypoint."""
+    from raw_runtime.entrypoint import WorkflowEntrypoint
+
+    entrypoint = WorkflowEntrypoint()
     params_class = GreetWorkflow._get_params_class()
-    parser = GreetWorkflow._build_argparse(params_class)
+    parser = entrypoint._build_argparse(GreetWorkflow, params_class)
 
     # Parse with required arg
     args = parser.parse_args(["--name", "World"])

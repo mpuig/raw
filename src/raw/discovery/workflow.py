@@ -43,75 +43,28 @@ def get_git_commit_hash(path: Path | None = None) -> str | None:
 
 
 def find_tool_imports(content: str) -> list[str]:
-    """Find tools imports in Python source code."""
-    pattern = r"from\s+tools\.(\w+)\s+import"
-    return list(set(re.findall(pattern, content)))
+    """Find tools imports in Python source code.
+
+    Delegates to ToolManager.find_imports for actual implementation.
+    """
+    from raw.discovery.tools import ToolManager
+
+    return ToolManager.find_imports(content)
 
 
 def snapshot_tools(workflow_dir: Path) -> dict[str, dict]:
     """Snapshot tools used by a workflow into _tools/ directory.
 
     Copies the tool code and creates origin.json with git reference.
+    Delegates to ToolManager for actual implementation.
 
     Returns:
         Dict mapping tool name to origin info
     """
-    from raw.scaffold.init import calculate_tool_hash, get_tools_dir
+    from raw.discovery.tools import get_tool_manager
 
-    tools_dir = get_tools_dir()
-    snapshot_dir = workflow_dir / "_tools"
-    run_py = workflow_dir / "run.py"
-
-    if not run_py.exists():
-        return {}
-
-    content = run_py.read_text()
-    tool_names = find_tool_imports(content)
-
-    if not tool_names:
-        return {}
-
-    if snapshot_dir.exists():
-        shutil.rmtree(snapshot_dir)
-    snapshot_dir.mkdir()
-    (snapshot_dir / "__init__.py").write_text('"""Snapshotted tools for this workflow."""\n')
-
-    git_hash = get_git_commit_hash()
-    snapshot_time = datetime.now(timezone.utc).isoformat()
-
-    origins = {}
-    for tool_name in tool_names:
-        src_tool_dir = tools_dir / tool_name
-        if not src_tool_dir.exists():
-            continue
-
-        dst_tool_dir = snapshot_dir / tool_name
-
-        # Copy tool directory
-        shutil.copytree(src_tool_dir, dst_tool_dir)
-
-        tool_config = load_tool_config(src_tool_dir)
-        content_hash = calculate_tool_hash(src_tool_dir)
-
-        origin = {
-            "tool_name": tool_name,
-            "tool_version": tool_config.version if tool_config else "unknown",
-            "content_hash": content_hash,
-            "git_commit": git_hash,
-            "snapshot_time": snapshot_time,
-            "source_path": str(src_tool_dir),
-        }
-        (dst_tool_dir / "origin.json").write_text(json.dumps(origin, indent=2))
-        origins[tool_name] = origin
-
-    new_content = re.sub(
-        r"from\s+tools\.(\w+)\s+import",
-        r"from _tools.\1 import",
-        content,
-    )
-    run_py.write_text(new_content)
-
-    return origins
+    manager = get_tool_manager()
+    return manager.snapshot(workflow_dir, git_hash=get_git_commit_hash())
 
 
 def sanitize_name(name: str) -> str:

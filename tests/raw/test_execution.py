@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from raw.engine import Container, DRY_RUN_TIMEOUT_SECONDS, SubprocessBackend
-from raw.engine.protocols import ExecutionBackend, RunResult, RunStorage
+from raw.engine.mocks import MockBackend, MockStorage
+from raw.engine.protocols import RunResult
 
 
 class TestRunResult:
@@ -119,74 +120,6 @@ class TestSubprocessBackend:
             assert result.timed_out is True
             assert result.exit_code == 124
             assert result.stdout == ""  # Should handle None
-
-
-class MockBackend(ExecutionBackend):
-    """Mock backend for testing.
-
-    Implements ExecutionBackend protocol to enable isolated unit tests
-    without spawning real subprocesses.
-    """
-
-    def __init__(self, result: RunResult) -> None:
-        self.result = result
-        self.calls: list[dict] = []
-
-    def run(
-        self,
-        script_path: Path,
-        args: list[str],
-        cwd: Path | None = None,
-        timeout: float | None = None,
-    ) -> RunResult:
-        self.calls.append({
-            "script_path": script_path,
-            "args": args,
-            "cwd": cwd,
-            "timeout": timeout,
-        })
-        return self.result
-
-
-class MockStorage(RunStorage):
-    """Mock storage for testing.
-
-    Implements RunStorage protocol to enable isolated unit tests
-    without filesystem side effects.
-    """
-
-    def __init__(self) -> None:
-        self.created_directories: list[Path] = []
-        self.saved_manifests: list[dict] = []
-        self.saved_logs: list[dict] = []
-
-    def create_run_directory(self, workflow_dir: Path) -> Path:
-        run_dir = workflow_dir / "runs" / "mock-run"
-        self.created_directories.append(run_dir)
-        return run_dir
-
-    def save_manifest(
-        self,
-        run_dir: Path,
-        workflow_id: str,
-        exit_code: int,
-        duration_seconds: float,
-        args: list[str],
-    ) -> None:
-        self.saved_manifests.append({
-            "run_dir": run_dir,
-            "workflow_id": workflow_id,
-            "exit_code": exit_code,
-            "duration_seconds": duration_seconds,
-            "args": args,
-        })
-
-    def save_output_log(self, run_dir: Path, stdout: str, stderr: str) -> None:
-        self.saved_logs.append({
-            "run_dir": run_dir,
-            "stdout": stdout,
-            "stderr": stderr,
-        })
 
 
 @pytest.fixture
