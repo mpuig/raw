@@ -10,7 +10,7 @@ from raw.discovery.display import (
     print_success,
 )
 from raw.discovery.workflow import find_workflow
-from raw.engine.execution import run_dry, run_workflow
+from raw.engine.execution import Container
 from raw.scaffold.dry_run import generate_dry_run_template
 
 
@@ -40,6 +40,8 @@ def run_command(
         print_error("--init requires --dry flag")
         raise SystemExit(1)
 
+    workflow_runner = Container.workflow_runner()
+
     if dry:
         dry_run_py = workflow_dir / "dry_run.py"
         mocks_dir = workflow_dir / "mocks"
@@ -62,11 +64,11 @@ def run_command(
         mocks_dir.mkdir(exist_ok=True)
         print_info(f"Dry-run workflow: {workflow_dir.name}")
         console.print()
-        result = run_dry(workflow_dir, ctx.args)
+        result = workflow_runner.run_dry(workflow_dir, ctx.args)
     else:
         print_info(f"Running workflow: {workflow_dir.name}")
         console.print()
-        result = run_workflow(workflow_dir, "run.py", ctx.args)
+        result = workflow_runner.run(workflow_dir, "run.py", ctx.args)
 
     print_run_result(
         workflow_dir.name,

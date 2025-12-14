@@ -198,3 +198,12 @@ def set_tool_registry(registry: ToolRegistry | None) -> None:
     """Set the global tool registry."""
     global _tool_registry
     _tool_registry = registry
+
+
+def reset_tool_registry() -> None:
+    """Reset the tool registry to force reinitialization.
+
+    Useful for testing to ensure clean state between tests.
+    """
+    global _tool_registry
+    _tool_registry = None

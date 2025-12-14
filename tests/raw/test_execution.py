@@ -5,15 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from raw.engine.backends import SubprocessBackend
-from raw.engine.container import Container
-from raw.engine.execution import (
-    DRY_RUN_TIMEOUT_SECONDS,
-    get_default_backend,
-    run_dry,
-    run_workflow,
-    set_default_backend,
-)
+from raw.engine import Container, DRY_RUN_TIMEOUT_SECONDS, SubprocessBackend
 from raw.engine.protocols import ExecutionBackend, RunResult, RunStorage
 
 
@@ -222,11 +214,12 @@ def mock_storage():
 
 
 class TestRunWorkflow:
-    """Tests for run_workflow function."""
+    """Tests for workflow runner run method."""
 
     def test_script_not_found(self, tmp_path: Path) -> None:
-        """Test run_workflow with non-existent script."""
-        result = run_workflow(tmp_path, "nonexistent.py")
+        """Test run with non-existent script."""
+        runner = Container.workflow_runner()
+        result = runner.run(tmp_path, "nonexistent.py")
         assert result.exit_code == 1
         assert "Script not found" in result.stderr
 
@@ -235,14 +228,15 @@ class TestRunWorkflow:
         script = tmp_path / "test.py"
         script.write_text("print('hello')")
 
-        run_workflow(tmp_path, "test.py", timeout=45.0)
+        runner = Container.workflow_runner()
+        runner.run(tmp_path, "test.py", timeout=45.0)
 
         assert len(mock_backend.calls) == 1
         assert mock_backend.calls[0]["timeout"] == 45.0
 
 
 class TestRunDry:
-    """Tests for run_dry function."""
+    """Tests for workflow runner run_dry method."""
 
     def test_uses_default_timeout(self, tmp_path: Path, mock_backend: MockBackend) -> None:
         """Test that run_dry uses DRY_RUN_TIMEOUT_SECONDS by default."""
@@ -251,7 +245,8 @@ class TestRunDry:
         mocks_dir = tmp_path / "mocks"
         mocks_dir.mkdir()
 
-        run_dry(tmp_path)
+        runner = Container.workflow_runner()
+        runner.run_dry(tmp_path)
 
         assert len(mock_backend.calls) == 1
         assert mock_backend.calls[0]["timeout"] == DRY_RUN_TIMEOUT_SECONDS
@@ -263,7 +258,8 @@ class TestRunDry:
         mocks_dir = tmp_path / "mocks"
         mocks_dir.mkdir()
 
-        run_dry(tmp_path, timeout=120.0)
+        runner = Container.workflow_runner()
+        runner.run_dry(tmp_path, timeout=120.0)
 
         assert len(mock_backend.calls) == 1
         assert mock_backend.calls[0]["timeout"] == 120.0
@@ -274,7 +270,8 @@ class TestRunDry:
         script.write_text("print('dry run')")
         # Note: NOT creating mocks/ directory
 
-        result = run_dry(tmp_path)
+        runner = Container.workflow_runner()
+        result = runner.run_dry(tmp_path)
 
         assert "Warning: mocks/ directory not found" in result.stderr
 
@@ -285,7 +282,8 @@ class TestRunDry:
         mocks_dir = tmp_path / "mocks"
         mocks_dir.mkdir()
 
-        result = run_dry(tmp_path)
+        runner = Container.workflow_runner()
+        result = runner.run_dry(tmp_path)
 
         assert "Warning: mocks/ directory not found" not in result.stderr
 
@@ -303,17 +301,17 @@ class TestRunDry:
             duration_seconds=0.1,
         )
         fail_backend = MockBackend(fail_result)
-        old_backend = get_default_backend()
-        set_default_backend(fail_backend)
+        Container.set_backend(fail_backend)
 
         try:
-            result = run_dry(tmp_path)
+            runner = Container.workflow_runner()
+            result = runner.run_dry(tmp_path)
 
             # Warning should not be prepended to error output
             assert "Warning: mocks/ directory not found" not in result.stderr
             assert result.stderr == "Exception: fail"
         finally:
-            set_default_backend(old_backend)
+            Container.reset()
 
 
 class TestContainer:

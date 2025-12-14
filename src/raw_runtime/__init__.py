@@ -108,8 +108,6 @@ from raw_runtime.orchestrator import (
     Orchestrator,
     OrchestratorRunInfo,
     OrchestratorRunStatus,
-    get_orchestrator,
-    set_orchestrator,
 )
 from raw_runtime.secrets import (
     CachingSecretProvider,

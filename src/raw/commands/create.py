@@ -20,7 +20,7 @@ from raw.discovery.workflow import (
     duplicate_workflow,
     find_workflow,
 )
-from raw.engine.execution import run_dry
+from raw.engine import Container
 from raw.scaffold.init import (
     create_tool,
     init_raw_project,
@@ -136,7 +136,7 @@ def create_command(
                 console.print()
                 print_info("Running dry-run to validate scaffold...")
                 console.print()
-                result = run_dry(workflow_dir)
+                result = Container.workflow_runner().run_dry(workflow_dir)
                 print_run_result(
                     workflow_id,
                     result.exit_code,
