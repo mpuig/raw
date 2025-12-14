@@ -54,6 +54,13 @@ from raw_runtime.context import (
     get_workflow_context,
     set_workflow_context,
 )
+from raw_runtime.manifest import (
+    LocalManifestWriter,
+    ManifestBuilder,
+    ManifestWriter,
+    get_manifest_writer,
+    set_manifest_writer,
+)
 from raw_runtime.decorators import cache_step, conditional, raw_step
 from raw_runtime.env import (
     ensure_env_loaded,
@@ -153,6 +160,12 @@ __all__ = [
     "WorkflowContext",
     "get_workflow_context",
     "set_workflow_context",
+    # Manifest
+    "ManifestBuilder",
+    "ManifestWriter",
+    "LocalManifestWriter",
+    "get_manifest_writer",
+    "set_manifest_writer",
     # EventBus
     "EventBus",
     "LocalEventBus",

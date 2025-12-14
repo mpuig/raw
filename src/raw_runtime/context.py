@@ -6,24 +6,24 @@ to record execution data into the manifest.
 
 With EventBus integration, the context emits events for all state
 changes, enabling real-time monitoring and decoupled handlers.
+
+Architecture:
+- WorkflowContext: Coordinates execution state and event emission
+- ManifestBuilder: Constructs manifests from execution data
+- ManifestWriter: Persists manifests (injectable for testing)
 """
 
-import socket
-import sys
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from raw_runtime.manifest import ManifestBuilder, ManifestWriter, get_manifest_writer
 from raw_runtime.models import (
     Artifact,
-    EnvironmentInfo,
-    LogsInfo,
     Manifest,
-    RunInfo,
     RunStatus,
     StepResult,
-    WorkflowInfo,
 )
 
 if TYPE_CHECKING:
@@ -48,8 +48,8 @@ def set_workflow_context(context: "WorkflowContext | None") -> None:
 class WorkflowContext:
     """Context manager for tracking workflow execution.
 
-    This class maintains the state of a running workflow and provides
-    methods for decorators to record step results and artifacts.
+    Coordinates execution state tracking and event emission.
+    Delegates manifest building to ManifestBuilder and persistence to ManifestWriter.
 
     Usage:
         context = WorkflowContext(
@@ -72,14 +72,26 @@ class WorkflowContext:
         workflow_dir: Path | None = None,
         event_bus: "EventBus | None" = None,
         workflow_version: str | None = None,
+        manifest_writer: ManifestWriter | None = None,
     ) -> None:
-        """Initialize workflow context."""
+        """Initialize workflow context.
+
+        Args:
+            workflow_id: Unique workflow identifier
+            short_name: Human-readable workflow name
+            parameters: Input parameters for the workflow
+            workflow_dir: Directory for output files
+            event_bus: Optional event bus for emitting events
+            workflow_version: Version string for the workflow
+            manifest_writer: Optional writer for manifest persistence (DI)
+        """
         self.workflow_id = workflow_id
         self.short_name = short_name
         self.parameters = parameters or {}
         self.workflow_dir = workflow_dir
         self._event_bus = event_bus
         self.workflow_version = workflow_version
+        self._manifest_writer = manifest_writer or get_manifest_writer()
 
         now = datetime.now(timezone.utc)
         self.run_timestamp = now.strftime("%Y%m%d%H%M%S")
@@ -89,11 +101,13 @@ class WorkflowContext:
         self._steps: list[StepResult] = []
         self._artifacts: list[Artifact] = []
 
-        self._environment = EnvironmentInfo(
-            hostname=socket.gethostname(),
-            python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-            raw_version="0.1.0",
-            working_directory=str(Path.cwd()),
+        self._manifest_builder = ManifestBuilder(
+            workflow_id=workflow_id,
+            short_name=short_name,
+            started_at=now,
+            run_id=self.run_id,
+            parameters=self.parameters,
+            workflow_dir=workflow_dir,
         )
 
     def emit(self, event: Any) -> None:
@@ -161,40 +175,14 @@ class WorkflowContext:
         status: RunStatus,
         error: str | None = None,
     ) -> Manifest:
-        """Build the complete manifest for this run."""
-        now = datetime.now(timezone.utc)
-        duration = (now - self.started_at).total_seconds()
+        """Build the complete manifest for this run.
 
-        workflow_info = WorkflowInfo(
-            id=self.workflow_id,
-            short_name=self.short_name,
-            version="1.0.0",
-            created_at=self.started_at,
-        )
-
-        run_info = RunInfo(
-            run_id=self.run_id,
-            workflow_id=self.workflow_id,
-            started_at=self.started_at,
-            ended_at=now,
-            status=status,
-            duration_seconds=duration,
-            parameters=self.parameters,
-            environment=self._environment,
-        )
-
-        logs = LogsInfo()
-        if self.workflow_dir:
-            log_path = self.workflow_dir / "output.log"
-            logs.stdout = str(log_path)
-
-        return Manifest(
-            schema_version="1.0.0",
-            workflow=workflow_info,
-            run=run_info,
+        Delegates to ManifestBuilder for actual construction.
+        """
+        return self._manifest_builder.build(
             steps=self._steps,
             artifacts=self._artifacts,
-            logs=logs,
+            status=status,
             error=error,
         )
 
@@ -245,14 +233,14 @@ class WorkflowContext:
     def _save_manifest(self, manifest: Manifest) -> None:
         """Save manifest to workflow_dir/manifest.json.
 
+        Delegates to ManifestWriter for actual persistence.
         When run via CLI, workflow_dir is the run directory (e.g., runs/20251208-xxxxx/).
-        The manifest is saved directly there, not in a .raw subdirectory.
         """
         if not self.workflow_dir:
             return
 
         manifest_path = self.workflow_dir / "manifest.json"
-        manifest_path.write_text(manifest.model_dump_json(indent=2, exclude_none=True))
+        self._manifest_writer.write(manifest, manifest_path)
 
     def __enter__(self) -> "WorkflowContext":
         """Enter context manager."""

@@ -39,6 +39,22 @@ def _get_model() -> Any:
     return _model
 
 
+def set_model(model: Any) -> None:
+    """Set the sentence transformer model (useful for testing).
+
+    Args:
+        model: A model with an encode() method, or None to reset.
+    """
+    global _model
+    _model = model
+
+
+def reset_model() -> None:
+    """Reset the model to force reload on next use."""
+    global _model
+    _model = None
+
+
 def _get_cache_dir(project_dir: Path | None = None) -> Path:
     """Get the cache directory for embeddings."""
     base = project_dir or Path.cwd()
