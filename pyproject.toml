@@ -1,13 +1,14 @@
 [project]
-name = "raw"
+name = "raw-platform"
 version = "0.1.0"
-description = "Run Agentic Workflows - Agent-first workflow orchestration for Claude Code"
+description = "RAW Platform - Self-extending AI platform for bots, agents, and workflows"
 readme = "README.md"
 authors = [
     { name = "mpuig" }
 ]
 requires-python = ">=3.10"
 dependencies = [
+    # Legacy dependencies (will be moved to packages)
     "httpx>=0.28.1",
     "jinja2>=3.0",
     "numpy>=2.2.6",
@@ -43,6 +44,15 @@ dev = [
     "types-pyyaml>=6.0.12.20250915",
     "pytest-asyncio>=1.3.0",
 ]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+raw-core = { workspace = true }
+raw-bot = { workspace = true }
+raw-agent = { workspace = true }
+raw-cli = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
