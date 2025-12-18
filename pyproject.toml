@@ -46,13 +46,14 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["packages/*"]
+members = ["packages/*", "packages/integrations/*"]
 
 [tool.uv.sources]
 raw-core = { workspace = true }
 raw-bot = { workspace = true }
 raw-agent = { workspace = true }
 raw-cli = { workspace = true }
+integration-llm = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
