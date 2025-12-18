@@ -20,6 +20,7 @@ from raw_core.errors.service import (
     LLMServiceError,
     ServiceError,
     STTServiceError,
+    TransportError,
     TTSServiceError,
 )
 
@@ -33,6 +34,7 @@ __all__ = [
     "PlatformError",
     "ServiceError",
     "STTServiceError",
+    "TransportError",
     "TTSServiceError",
     "ToolExecutionError",
     "ToolNotFoundError",

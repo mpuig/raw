@@ -25,3 +25,9 @@ class TTSServiceError(ServiceError):
     """Text-to-speech service errors (ElevenLabs, etc.)."""
 
     pass
+
+
+class TransportError(PlatformError):
+    """Transport errors (audio, network, connection issues)."""
+
+    pass
