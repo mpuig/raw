@@ -118,27 +118,17 @@ raw logs hello-world
 
 ---
 
-## The agent's API (CLI reference)
-
-While designed for agents, these commands are available for debugging or manual intervention.
+## CLI
 
 | Command | Purpose |
 | :--- | :--- |
-| **`raw init`** | Initialize the platform in the current directory. |
-| **`raw hooks install`** | Install Claude Code hooks for automatic context injection. |
-| **`raw onboard`** | Interactive wizard to create/update AGENTS.md instructions. |
-| **`raw prime`** | Dump session context for the agent. |
-| **`raw create <name>`** | Create a new workflow (supports `--from <id>` to duplicate). |
-| **`raw create <name> --tool`** | Create a reusable tool. |
-| **`raw install <url>`** | Install a remote tool from a Git repository. |
-| **`raw run [id]`** | Execute a workflow (prompts if id omitted, `--dry` for mocks). |
-| **`raw list`** | List all workflows. |
-| **`raw list tools`** | List all tools. |
-| **`raw search <query>`** | Search tools by description (semantic or keyword). |
-| **`raw show [id]`** | Show details/configuration (prompts if id omitted). |
-| **`raw status [id]`** | Show execution history and logs. |
-| **`raw publish [id]`** | Freeze a workflow and pin dependencies. |
-| **`raw serve`** | Start daemon server for webhooks and approvals. |
+| `raw init` | Initialize RAW in current directory |
+| `raw create <name>` | Create a workflow (`--tool` for tools) |
+| `raw run <id>` | Execute a workflow (`--dry` for testing) |
+| `raw list` | List workflows and tools |
+| `raw search <query>` | Find existing tools |
+
+Run `raw --help` for all commands.
 
 ---
 
