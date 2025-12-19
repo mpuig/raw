@@ -15,11 +15,8 @@ mkdir my-project && cd my-project
 uv init
 uv add raw
 
-# Initialize RAW
-raw init
-
-# Install Claude Code hooks (for automatic context injection)
-raw hooks install
+# Initialize RAW (with Claude Code hooks)
+raw init --hooks
 ```
 
 ## Create Your First Workflow

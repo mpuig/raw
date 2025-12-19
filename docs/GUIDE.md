@@ -104,19 +104,18 @@ from tools.web_scraper import fetch_url
 
 ### Step 5: AI Agent Integration
 
-Install Claude Code hooks for automatic context injection:
+For Claude Code integration, run init with the hooks flag:
 
 ```bash
-raw hooks install
+raw init --hooks
 ```
 
-This creates `.claude/settings.local.json` with hooks that run `raw prime` on session start, giving Claude awareness of your workflows and tools.
+This creates `.claude/settings.local.json` with hooks that run `raw show --context` on session start, giving Claude awareness of your workflows and tools.
 
-For manual context refresh or debugging:
+For manual context refresh:
 
 ```bash
-raw prime       # Output current session context
-raw onboard     # Full documentation for AGENTS.md
+raw show --context   # Output current session context
 ```
 
 **That's it!** Just ask Claude: *"Create a workflow that fetches stock data and generates a report"*
@@ -208,29 +207,7 @@ if __name__ == "__main__":
 raw run hello-world --dry
 ```
 
-### Step 5: Publish the Workflow
-
-Once tested, publish to freeze the workflow:
-
-```bash
-raw publish hello-world
-```
-
-Output:
-```
-╭──────────────────────────── RAW ────────────────────────────╮
-│ Workflow published!                                         │
-│                                                             │
-│ ID: 20251206-hello-world-abc123                             │
-│ Version: 1.0.0                                              │
-│ Status: published                                           │
-│                                                             │
-│ The workflow is now immutable. To modify, use:              │
-│   raw create <name> --from 20251206-hello-world-abc123      │
-╰─────────────────────────────────────────────────────────────╯
-```
-
-### Step 6: Run the Workflow
+### Step 5: Run the Workflow
 
 ```bash
 raw run hello-world --name "Claude"
@@ -284,35 +261,29 @@ raw list tools
 raw show fetch-data
 ```
 
-## Modifying Published Workflows
+## Duplicating Workflows
 
-Published workflows are immutable. To modify one:
+To create a copy of an existing workflow:
 
 ```bash
-# Duplicate the workflow
 raw create hello-world-v2 --from hello-world
-
-# This creates a new draft you can modify
-raw show hello-world-v2
 ```
 
 ## Workflow Lifecycle
 
 ```
-draft → implement → dry-run → publish
-  │         │          │         │
-  │         │          │         └── Immutable, versioned
-  │         │          └── Test with mock data (raw run --dry)
-  │         └── AI agent writes code + tools
+create → implement → test → run
+  │          │         │      │
+  │          │         │      └── Execute with raw run
+  │          │         └── Test with mock data (raw run --dry)
+  │          └── AI agent writes code + tools
   └── Define intent (raw create)
 ```
 
-1. **Draft**: Created with `raw create`, contains intent
-2. **Implement**: Claude Code writes code and tools
-3. **Dry-run**: Test with mock data using `raw run <id> --dry`
-4. **Publish**: Freeze with `raw publish` (pins tool versions)
-
-After publishing, use `raw create <name> --from <id>` to create a modifiable copy.
+1. **Create**: Scaffold with `raw create --intent "..."`
+2. **Implement**: Write code and create/reuse tools
+3. **Test**: Validate with mock data using `raw run <id> --dry`
+4. **Run**: Execute with `raw run <id>`
 
 ## Using Decorators (Advanced)
 
@@ -380,48 +351,23 @@ The docstring becomes the system prompt, arguments become the user message, and 
 
 ## CLI Reference
 
-### Core Commands
-
 | Command | Description |
 |---------|-------------|
 | `raw init` | Initialize RAW in current directory |
+| `raw init --hooks` | Initialize with Claude Code hooks |
 | `raw create <name>` | Create a new workflow |
-| `raw create <name> --tool` | Create a new tool |
-| `raw create <name> --from <id>` | Duplicate an existing workflow |
-| `raw list` | List all workflows |
-| `raw list tools` | List all tools |
-| `raw show <id>` | Show workflow details |
+| `raw create <name> --tool -d "..."` | Create a reusable tool |
+| `raw create <name> --from <id>` | Duplicate existing workflow |
 | `raw run <id>` | Execute a workflow |
 | `raw run <id> --dry` | Test with mock data |
-| `raw publish <id>` | Freeze workflow (make immutable) |
-| `raw search "<query>"` | Search tools by description |
-| `raw logs <id>` | View execution logs |
+| `raw list` | List workflows |
+| `raw list tools` | List tools |
+| `raw list tools -s "query"` | Search tools by description |
+| `raw show <id>` | Show workflow/tool details |
+| `raw show <id> --logs` | View execution logs |
+| `raw show --context` | Output agent context |
 
-### Server Commands
-
-| Command | Description |
-|---------|-------------|
-| `raw serve` | Start daemon server (webhooks, approvals) |
-| `raw serve --port 9000` | Use custom port |
-
-### Agent Integration
-
-| Command | Description |
-|---------|-------------|
-| `raw prime` | Output context for AI agent sessions |
-| `raw onboard` | Generate AGENTS.md documentation |
-| `raw hooks install` | Install Claude Code hooks |
-| `raw hooks uninstall` | Remove Claude Code hooks |
-
-### Common Flags
-
-- `--dry`: Test with mock data (no real API calls)
-- `--init`: Generate mock template on first dry run
-- `--timeout <seconds>`: Set execution timeout
-- `--intent "<description>"`: Set workflow intent on create
-- `--tool`: Create a tool instead of workflow
-
-Most commands support **interactive selection** when the workflow/tool ID is omitted.
+Most commands support **interactive selection** when ID is omitted.
 
 ## Best Practices
 
@@ -437,16 +383,16 @@ raw create stock-report --intent "Analyze stocks"
 
 ### 2. Reuse Tools
 
-Search for and check existing tools before creating new ones:
+Search for existing tools before creating new ones:
 ```bash
-raw search "what you need"   # Find tools by description
-raw list tools               # List all tools
-raw show <tool-name>         # View tool details
+raw list tools -s "what you need"   # Search tools
+raw list tools                      # List all tools
+raw show <tool-name>                # View tool details
 ```
 
-### 3. Test Before Publishing
+### 3. Test Before Running
 
-Always run `raw run <id> --dry` before `raw publish`.
+Always run `raw run <id> --dry` before the real execution.
 
 ### 4. Use Pydantic for Parameters
 

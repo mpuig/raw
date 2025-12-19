@@ -12,18 +12,15 @@ RAW uses **CLI + Hooks** for Claude Code integration:
 # 1. Install RAW
 uv add raw
 
-# 2. Initialize in your project
+# 2. Initialize with hooks
 cd your-project
-raw init
-
-# 3. Install hooks for automatic context injection
-raw hooks install
+raw init --hooks
 ```
 
 **How it works:**
-- `SessionStart` hook runs `raw prime` automatically when Claude Code starts
+- `SessionStart` hook runs `raw show --context` when Claude Code starts
 - `PreCompact` hook refreshes context before compaction
-- `raw prime` injects ~500-1k tokens of workflow context
+- Context injection is ~500-1k tokens of workflow state
 - You use `raw` CLI commands directly in conversation
 
 ---
@@ -41,13 +38,13 @@ RAW deliberately uses the lightweight CLI approach instead of MCP servers.
 | MCP Server | 10-50k tokens | Full tool schemas loaded always |
 | CLI + Hooks | ~500-1k tokens | Only current state, refreshed on demand |
 
-The `raw prime` output is minimal: quick reference, key rules, and a list of current workflows/tools.
+The `raw show --context` output is minimal: quick reference, key rules, and a list of current workflows/tools.
 
 ### Simplicity
 
 - **No protocol overhead**: Direct CLI calls, no MCP message passing
 - **Universal**: Works with any editor that has shell access
-- **Debuggable**: `raw prime` output is plain markdown you can inspect
+- **Debuggable**: `raw show --context` output is plain markdown you can inspect
 - **Portable**: Same commands work in terminal, Claude Code, Cursor, Windsurf
 
 ### When MCP Makes Sense
@@ -71,7 +68,7 @@ Agent Skills are a Claude Code feature: modular `SKILL.md` files in `.claude/ski
 
 ### RAW Skills
 
-RAW includes two skills that are installed via `raw hooks install`:
+RAW includes two skills that are installed via `raw init --hooks`:
 
 | Skill | Description |
 |-------|-------------|
@@ -89,11 +86,11 @@ These skills provide:
 Skills are automatically installed when you run:
 
 ```bash
-raw hooks install
+raw init --hooks
 ```
 
 This installs:
-1. **Hooks** in `.claude/settings.local.json` (runs `raw prime` on session start)
+1. **Hooks** in `.claude/settings.local.json` (runs `raw show --context` on session start)
 2. **Skills** in `.claude/skills/` (auto-invoked by Claude when relevant)
 
 ```
@@ -139,24 +136,18 @@ See [Claude Code Skills documentation](https://code.claude.com/docs/en/skills) f
 Session Start
      │
      ▼
-┌─────────────────┐
-│ raw hooks       │  ← SessionStart hook triggers
-│ (settings.json) │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ raw prime       │  ← Generates context markdown
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Claude Code     │  ← Receives workflow/tool summary
-│ Context         │
-└─────────────────┘
+┌─────────────────────────┐
+│ SessionStart hook       │  ← Runs raw show --context
+│ (settings.local.json)   │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Claude Code Context     │  ← Receives workflow/tool summary
+└─────────────────────────┘
 ```
 
-### What `raw prime` Outputs
+### What `raw show --context` Outputs
 
 ```markdown
 # RAW Context
@@ -194,23 +185,17 @@ Hooks are installed **per-project** in `.claude/settings.local.json`. This keeps
 ### Install Hooks
 
 ```bash
-raw hooks install
+raw init --hooks
 ```
 
 Creates `.claude/settings.local.json`:
 ```json
 {
   "hooks": {
-    "SessionStart": [{"matcher": "", "hooks": [{"type": "command", "command": "raw prime"}]}],
-    "PreCompact": [{"matcher": "", "hooks": [{"type": "command", "command": "raw prime"}]}]
+    "SessionStart": [{"matcher": "", "hooks": [{"type": "command", "command": "raw show --context"}]}],
+    "PreCompact": [{"matcher": "", "hooks": [{"type": "command", "command": "raw show --context"}]}]
   }
 }
-```
-
-### Remove Hooks
-
-```bash
-raw hooks uninstall
 ```
 
 ---
@@ -256,10 +241,9 @@ Workflows are self-contained after snapshot—no external dependencies.
 
 | Aspect | RAW | Beads |
 |--------|-----|-------|
-| Primary command | `raw prime` | `bd prime` |
+| Primary command | `raw show --context` | `bd prime` |
 | Hook events | SessionStart, PreCompact | SessionStart, PreCompact |
 | Context size | ~500-1k tokens | ~1-2k tokens |
-| MCP server | Not yet | Optional |
 | Skills | Core feature | Not used |
 | Focus | Workflow orchestration | Issue tracking |
 
@@ -273,14 +257,14 @@ Both tools follow the same integration philosophy: lightweight CLI + hooks for e
 
 ```bash
 # Reinstall hooks
-raw hooks install
+raw init --hooks
 ```
 
 ### Context Not Refreshing
 
 ```bash
 # Manual refresh
-raw prime
+raw show --context
 
 # Check RAW is initialized
 ls .raw/
@@ -288,7 +272,7 @@ ls .raw/
 
 ### Wrong Project Context
 
-`raw prime` reads from `.raw/` in the current directory. Ensure you're in the right project:
+`raw show --context` reads from `.raw/` in the current directory. Ensure you're in the right project:
 
 ```bash
 pwd
