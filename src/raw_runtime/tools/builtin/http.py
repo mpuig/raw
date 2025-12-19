@@ -6,10 +6,10 @@ General-purpose HTTP client for API calls.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class HttpCapability(Capability):
+class HttpTool(Tool):
     """HTTP request capability.
 
     Usage:
@@ -32,7 +32,7 @@ class HttpCapability(Capability):
     description: ClassVar[str] = "Make HTTP requests"
     triggers: ClassVar[list[str]] = ["webhook.received"]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Make an HTTP request.
 
         Args:
@@ -45,7 +45,7 @@ class HttpCapability(Capability):
             timeout: Request timeout in seconds (default: 30)
 
         Yields:
-            CapabilityEvent with types: started, completed (with response), failed
+            ToolEvent with types: started, completed (with response), failed
         """
         raise NotImplementedError(
             "HTTP capability not implemented. This capability requires an HTTP client library."

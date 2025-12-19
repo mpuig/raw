@@ -6,10 +6,10 @@ Extract text from images and scanned documents.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class OcrCapability(Capability):
+class OcrTool(Tool):
     """OCR text extraction capability.
 
     Usage:
@@ -25,7 +25,7 @@ class OcrCapability(Capability):
     description: ClassVar[str] = "Extract text from images (Tesseract, Google Vision)"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Extract text from an image.
 
         Args:
@@ -36,7 +36,7 @@ class OcrCapability(Capability):
             provider: Provider ("tesseract", "google", "aws")
 
         Yields:
-            CapabilityEvent with types: started, completed (with text), failed
+            ToolEvent with types: started, completed (with text), failed
         """
         raise NotImplementedError(
             "OCR capability not implemented. "

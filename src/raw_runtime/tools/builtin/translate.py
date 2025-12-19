@@ -6,10 +6,10 @@ Supports Google Translate, DeepL, AWS Translate, and LLM-based translation.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class TranslateCapability(Capability):
+class TranslateTool(Tool):
     """Text translation capability.
 
     Usage:
@@ -25,7 +25,7 @@ class TranslateCapability(Capability):
     description: ClassVar[str] = "Translate text between languages"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Translate text.
 
         Args:
@@ -35,7 +35,7 @@ class TranslateCapability(Capability):
             provider: Provider ("google", "deepl", "aws", "llm")
 
         Yields:
-            CapabilityEvent with types: started, completed (with translation), failed
+            ToolEvent with types: started, completed (with translation), failed
         """
         raise NotImplementedError(
             "Translate capability not implemented. "

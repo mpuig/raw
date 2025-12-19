@@ -6,10 +6,10 @@ Supports S3, GCS, Azure Blob, and local filesystem.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class StorageCapability(Capability):
+class StorageTool(Tool):
     """File storage capability.
 
     Usage:
@@ -34,7 +34,7 @@ class StorageCapability(Capability):
     description: ClassVar[str] = "File storage operations (S3, GCS, local)"
     triggers: ClassVar[list[str]] = ["storage.object.created", "storage.object.deleted"]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Perform storage operations.
 
         Args:
@@ -46,7 +46,7 @@ class StorageCapability(Capability):
             provider: Provider ("s3", "gcs", "azure", "local") - default "s3"
 
         Yields:
-            CapabilityEvent with types: started, progress, completed, failed
+            ToolEvent with types: started, progress, completed, failed
         """
         raise NotImplementedError(
             "Storage capability not implemented. "

@@ -1,6 +1,6 @@
-"""Example: Inbound Call Handling Workflow with Capabilities.
+"""Example: Inbound Call Handling Workflow with Tools.
 
-This example demonstrates how to use RAW's capability system to:
+This example demonstrates how to use RAW's tool system to:
 1. Trigger a workflow from an external event (Twilio incoming call)
 2. Load customer context from a CRM
 3. Handle a conversation using Converse
@@ -15,7 +15,7 @@ Usage:
 from pydantic import BaseModel, Field
 
 from raw_runtime import BaseWorkflow, on_event, step
-from raw_runtime.capability import CapabilityEventType
+from raw_runtime.tools import ToolEventType
 
 
 class CallParams(BaseModel):
@@ -41,8 +41,8 @@ class InboundCallWorkflow(BaseWorkflow[CallParams]):
         """Load customer information from CRM."""
         self.log(f"Looking up customer: {self.params.phone}")
 
-        # Use CRM capability to get customer data
-        result = await self.capability("crm").call(
+        # Use CRM tool to get customer data
+        result = await self.tool("crm").call(
             action="get_contact",
             phone=self.params.phone,
         )
@@ -63,8 +63,8 @@ class InboundCallWorkflow(BaseWorkflow[CallParams]):
         transcript = []
         outcome = None
 
-        # Use Converse capability for AI conversation
-        async for event in self.capability("converse").run(
+        # Use Converse tool for AI conversation
+        async for event in self.tool("converse").run(
             bot="support",
             transport="twilio",
             call_sid=self.params.call_sid,
@@ -73,17 +73,17 @@ class InboundCallWorkflow(BaseWorkflow[CallParams]):
                 "channel": "voice",
             },
         ):
-            if event.type == CapabilityEventType.MESSAGE:
+            if event.type == ToolEventType.MESSAGE:
                 role = event.data.get("role", "assistant")
                 text = event.data.get("text", "")
                 transcript.append({"role": role, "text": text})
                 self.log(f"[{role}]: {text[:50]}...")
 
-            elif event.type == CapabilityEventType.CUSTOM:
+            elif event.type == ToolEventType.CUSTOM:
                 if event.data.get("event") == "tool_call":
                     self.log(f"Tool called: {event.data.get('tool_name')}")
 
-            elif event.type == CapabilityEventType.COMPLETED:
+            elif event.type == ToolEventType.COMPLETED:
                 outcome = event.data.get("outcome")
                 self.log(f"Conversation ended with outcome: {outcome}")
 
@@ -103,8 +103,8 @@ class InboundCallWorkflow(BaseWorkflow[CallParams]):
             f"{msg['role']}: {msg['text']}" for msg in conversation["transcript"]
         )
 
-        # Use summarize capability
-        result = await self.capability("summarize").call(
+        # Use summarize tool
+        result = await self.tool("summarize").call(
             text=transcript_text,
             style="bullet_points",
             max_length=100,
@@ -123,7 +123,7 @@ class InboundCallWorkflow(BaseWorkflow[CallParams]):
 
         self.log("Updating CRM with call details...")
 
-        await self.capability("crm").call(
+        await self.tool("crm").call(
             action="create_activity",
             contact_id=customer["id"],
             data={

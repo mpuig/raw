@@ -6,10 +6,10 @@ Supports PostgreSQL, MySQL, SQLite, and other databases via SQLAlchemy.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class DatabaseCapability(Capability):
+class DatabaseTool(Tool):
     """Database operations capability.
 
     Usage:
@@ -25,7 +25,7 @@ class DatabaseCapability(Capability):
     description: ClassVar[str] = "Execute database queries"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Execute a database query.
 
         Args:
@@ -35,7 +35,7 @@ class DatabaseCapability(Capability):
             fetch: Fetch mode ("all", "one", "none") - default "all"
 
         Yields:
-            CapabilityEvent with types: started, completed (with rows), failed
+            ToolEvent with types: started, completed (with rows), failed
         """
         raise NotImplementedError(
             "Database capability not implemented. "

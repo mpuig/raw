@@ -6,10 +6,10 @@ Supports Google Sheets, Excel files, and CSV.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class SpreadsheetCapability(Capability):
+class SpreadsheetTool(Tool):
     """Spreadsheet operations capability.
 
     Usage:
@@ -33,7 +33,7 @@ class SpreadsheetCapability(Capability):
     description: ClassVar[str] = "Read and write to spreadsheets"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Perform spreadsheet operations.
 
         Args:
@@ -44,7 +44,7 @@ class SpreadsheetCapability(Capability):
             provider: Provider ("google", "excel", "csv") - default "google"
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "Spreadsheet capability not implemented. "

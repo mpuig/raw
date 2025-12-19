@@ -6,10 +6,10 @@ Extracts data from web pages using CSS selectors or XPath.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class ScraperCapability(Capability):
+class ScraperTool(Tool):
     """Web scraping capability.
 
     Usage:
@@ -28,7 +28,7 @@ class ScraperCapability(Capability):
     description: ClassVar[str] = "Web scraping and data extraction"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Scrape data from a web page.
 
         Args:
@@ -40,7 +40,7 @@ class ScraperCapability(Capability):
             headers: Custom HTTP headers
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "Scraper capability not implemented. "

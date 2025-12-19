@@ -6,10 +6,10 @@ Supports Google Search, Bing, and custom search indexes.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class SearchCapability(Capability):
+class SearchTool(Tool):
     """Web search capability.
 
     Usage:
@@ -25,7 +25,7 @@ class SearchCapability(Capability):
     description: ClassVar[str] = "Web search (Google, Bing, custom)"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Perform a web search.
 
         Args:
@@ -36,7 +36,7 @@ class SearchCapability(Capability):
             provider: Provider ("google", "bing", "duckduckgo")
 
         Yields:
-            CapabilityEvent with types: started, completed (with results), failed
+            ToolEvent with types: started, completed (with results), failed
         """
         raise NotImplementedError(
             "Search capability not implemented. "

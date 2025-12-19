@@ -6,10 +6,10 @@ Create PDFs from HTML/templates or extract data from existing PDFs.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class PdfCapability(Capability):
+class PdfTool(Tool):
     """PDF generation and processing capability.
 
     Usage:
@@ -32,7 +32,7 @@ class PdfCapability(Capability):
     description: ClassVar[str] = "PDF generation and text extraction"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Generate or process PDFs.
 
         Args:
@@ -45,7 +45,7 @@ class PdfCapability(Capability):
             pages: Page range (for split operation)
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "PDF capability not implemented. "

@@ -6,10 +6,10 @@ Send push notifications to mobile apps and browsers.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class NotifyCapability(Capability):
+class NotifyTool(Tool):
     """Push notification capability.
 
     Usage:
@@ -25,7 +25,7 @@ class NotifyCapability(Capability):
     description: ClassVar[str] = "Send push notifications (Firebase, OneSignal)"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Send a push notification.
 
         Args:
@@ -38,7 +38,7 @@ class NotifyCapability(Capability):
             provider: Provider ("firebase", "onesignal", "apns")
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "Notify capability not implemented. "

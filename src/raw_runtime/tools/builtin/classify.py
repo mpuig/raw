@@ -6,10 +6,10 @@ LLM-powered text classification for sentiment, intent, categories, etc.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class ClassifyCapability(Capability):
+class ClassifyTool(Tool):
     """Text classification capability.
 
     Usage:
@@ -32,7 +32,7 @@ class ClassifyCapability(Capability):
     description: ClassVar[str] = "Classify text into categories using LLMs"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Classify text into categories.
 
         Args:
@@ -42,7 +42,7 @@ class ClassifyCapability(Capability):
             model: LLM model to use (default from config)
 
         Yields:
-            CapabilityEvent with types: started, completed (with classification), failed
+            ToolEvent with types: started, completed (with classification), failed
         """
         raise NotImplementedError(
             "Classify capability not implemented. "

@@ -6,10 +6,10 @@ Supports Twilio, Vonage, and other SMS providers.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class SmsCapability(Capability):
+class SmsTool(Tool):
     """SMS/MMS messaging capability.
 
     Usage:
@@ -23,7 +23,7 @@ class SmsCapability(Capability):
     description: ClassVar[str] = "Send SMS and MMS messages"
     triggers: ClassVar[list[str]] = ["sms.received", "sms.status.updated"]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Send an SMS message.
 
         Args:
@@ -33,7 +33,7 @@ class SmsCapability(Capability):
             media_urls: Optional list of media URLs for MMS
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "SMS capability not implemented. "

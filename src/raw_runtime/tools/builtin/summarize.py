@@ -6,10 +6,10 @@ LLM-powered text summarization for documents, articles, and conversations.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class SummarizeCapability(Capability):
+class SummarizeTool(Tool):
     """Text summarization capability.
 
     Usage:
@@ -25,7 +25,7 @@ class SummarizeCapability(Capability):
     description: ClassVar[str] = "Summarize text using LLMs"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Summarize text.
 
         Args:
@@ -36,7 +36,7 @@ class SummarizeCapability(Capability):
             model: LLM model to use (default from config)
 
         Yields:
-            CapabilityEvent with types: started, completed (with summary), failed
+            ToolEvent with types: started, completed (with summary), failed
         """
         raise NotImplementedError(
             "Summarize capability not implemented. "

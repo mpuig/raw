@@ -6,10 +6,10 @@ Supports Twilio, Vonage, and other telephony providers.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class VoiceCapability(Capability):
+class VoiceTool(Tool):
     """Voice call capability.
 
     Usage:
@@ -37,7 +37,7 @@ class VoiceCapability(Capability):
         "voice.call.ended",
     ]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Make or manage a voice call.
 
         Args:
@@ -48,7 +48,7 @@ class VoiceCapability(Capability):
             action: Action to perform ("dial", "hangup", "connect")
 
         Yields:
-            CapabilityEvent with types: started, ringing, answered, completed, failed
+            ToolEvent with types: started, ringing, answered, completed, failed
         """
         raise NotImplementedError(
             "Voice capability not implemented. "

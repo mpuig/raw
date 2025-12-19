@@ -6,10 +6,10 @@ Supports channels, DMs, threads, and rich message formatting.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class SlackCapability(Capability):
+class SlackTool(Tool):
     """Slack messaging capability.
 
     Usage:
@@ -24,7 +24,7 @@ class SlackCapability(Capability):
     description: ClassVar[str] = "Send messages to Slack channels and users"
     triggers: ClassVar[list[str]] = ["slack.message.received", "slack.event"]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Send a Slack message.
 
         Args:
@@ -35,7 +35,7 @@ class SlackCapability(Capability):
             unfurl_links: Whether to unfurl URLs (default: True)
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "Slack capability not implemented. Configure Slack API token to use this capability."

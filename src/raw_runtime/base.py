@@ -37,7 +37,7 @@ from raw_runtime.context import WorkflowContext
 from raw_runtime.protocols.logger import WorkflowLogger, get_logger
 
 if TYPE_CHECKING:
-    from raw_runtime.capability import Capability
+    from raw_runtime.tools.base import Tool
     from raw_runtime.triggers import TriggerEvent
 
 ParamsT = TypeVar("ParamsT", bound=BaseModel)
@@ -115,33 +115,33 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         """
         return self._trigger_event
 
-    def capability(self, name: str) -> "Capability":
-        """Get a capability by name.
+    def tool(self, name: str) -> "Tool":
+        """Get a tool by name.
 
-        Capabilities provide access to external services (email, SMS, HTTP, etc.)
+        Tools provide access to reusable actions (email, SMS, HTTP, etc.)
         with a uniform async interface.
 
         Args:
-            name: Capability name (e.g., "email", "sms", "http")
+            name: Tool name (e.g., "email", "sms", "http", "converse")
 
         Returns:
-            The capability instance
+            The tool instance
 
         Raises:
-            KeyError: If the capability is not registered
+            KeyError: If the tool is not registered
 
         Usage:
             # Simple request/response
-            result = await self.capability("http").call(url="https://api.example.com")
+            result = await self.tool("http").call(url="https://api.example.com")
 
             # Streaming/long-running
-            async for event in self.capability("converse").run(bot="support"):
+            async for event in self.tool("converse").run(bot="support"):
                 if event.type == "message":
                     self.log(event.data["text"])
         """
-        from raw_runtime.capability import get_capability
+        from raw_runtime.tools.registry import get_tool
 
-        return get_capability(name)
+        return get_tool(name)
 
     @abstractmethod
     def run(self) -> int:

@@ -6,10 +6,10 @@ Supports Google Calendar, Outlook Calendar, and iCal.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class CalendarCapability(Capability):
+class CalendarTool(Tool):
     """Calendar operations capability.
 
     Usage:
@@ -38,7 +38,7 @@ class CalendarCapability(Capability):
         "calendar.reminder",
     ]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Perform calendar operations.
 
         Args:
@@ -51,7 +51,7 @@ class CalendarCapability(Capability):
             provider: Provider ("google", "outlook", "ical")
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "Calendar capability not implemented. "

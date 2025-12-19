@@ -6,10 +6,10 @@ Supports Stripe, PayPal, Square, and other payment processors.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class PaymentCapability(Capability):
+class PaymentTool(Tool):
     """Payment processing capability.
 
     Usage:
@@ -37,7 +37,7 @@ class PaymentCapability(Capability):
         "subscription.cancelled",
     ]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Process payments.
 
         Args:
@@ -49,7 +49,7 @@ class PaymentCapability(Capability):
             provider: Provider ("stripe", "paypal", "square")
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "Payment capability not implemented. "

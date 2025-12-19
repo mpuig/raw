@@ -6,10 +6,10 @@ Supports multiple providers: SMTP, SendGrid, Mailgun, SES.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class EmailCapability(Capability):
+class EmailTool(Tool):
     """Email sending capability.
 
     Usage:
@@ -25,7 +25,7 @@ class EmailCapability(Capability):
     description: ClassVar[str] = "Send emails via SMTP or email service providers"
     triggers: ClassVar[list[str]] = []
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Send an email.
 
         Args:
@@ -39,7 +39,7 @@ class EmailCapability(Capability):
             attachments: Optional list of attachment paths
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "Email capability not implemented. "

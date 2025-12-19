@@ -6,10 +6,10 @@ Supports Salesforce, HubSpot, Pipedrive, and other CRM systems.
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
-from raw_runtime.capability import Capability, CapabilityEvent
+from raw_runtime.tools.base import Tool, ToolEvent
 
 
-class CrmCapability(Capability):
+class CrmTool(Tool):
     """CRM operations capability.
 
     Usage:
@@ -35,7 +35,7 @@ class CrmCapability(Capability):
         "crm.deal.lost",
     ]
 
-    async def run(self, **config: Any) -> AsyncIterator[CapabilityEvent]:
+    async def run(self, **config: Any) -> AsyncIterator[ToolEvent]:
         """Perform CRM operations.
 
         Args:
@@ -46,7 +46,7 @@ class CrmCapability(Capability):
             provider: Provider ("salesforce", "hubspot", "pipedrive")
 
         Yields:
-            CapabilityEvent with types: started, completed, failed
+            ToolEvent with types: started, completed, failed
         """
         raise NotImplementedError(
             "CRM capability not implemented. Configure CRM API credentials to use this capability."
