@@ -1,19 +1,32 @@
-# RAW Skills
+# RAW skills
 
-Claude Code Agent Skills for creating RAW workflows and tools.
+Agent Skills for RAW platform, following the [agentskills.io](https://agentskills.io) specification.
 
-## Directory Structure
+## Available skills
+
+| Skill | Description |
+|-------|-------------|
+| `raw-workflow-creator` | Create and run RAW workflows |
+| `raw-tool-creator` | Create reusable RAW tools |
+| `skill-creator` | Create new Agent Skills |
+
+## Directory structure
 
 ```
 skills/
-├── raw-workflow-creator/   # Skill for creating workflows
-│   ├── SKILL.md            # Main skill file (required)
-│   ├── references/         # Reference documentation
-│   └── templates/          # Code templates
-├── raw-tool-creator/       # Skill for creating tools
+├── raw-workflow-creator/
 │   ├── SKILL.md
-│   └── ...
-└── README.md               # This file
+│   ├── references/
+│   └── templates/
+├── raw-tool-creator/
+│   ├── SKILL.md
+│   ├── references/
+│   └── templates/
+├── skill-creator/
+│   ├── SKILL.md
+│   ├── references/
+│   └── scripts/
+└── README.md
 ```
 
 ## Installation
@@ -26,31 +39,38 @@ raw hooks install
 
 This copies skills to `.claude/skills/` in the target project.
 
-## Creating New Skills
+## Creating new skills
 
-1. Create a directory: `skills/<skill-name>/`
-2. Add `SKILL.md` with YAML frontmatter:
-   ```yaml
-   ---
-   name: skill-name
-   description: Brief description. Include when to use it.
-   ---
+Use the `skill-creator` skill or the init script:
 
-   # Skill Title
+```bash
+python skills/skill-creator/scripts/init_skill.py my-skill -d "Description"
+```
 
-   ## Instructions
-   ...
-   ```
-3. Register in `src/raw/commands/hooks.py`:
-   ```python
-   RAW_SKILLS = ["raw-workflow-creator", "raw-tool-creator", "new-skill"]
-   ```
+Validate your skill:
 
-## Documentation
+```bash
+python skills/skill-creator/scripts/quick_validate.py skills/my-skill
+```
 
-See [docs/CLAUDE_INTEGRATION.md](../docs/CLAUDE_INTEGRATION.md) for:
-- How skills integrate with Claude Code
-- Skill storage locations
-- How Claude invokes skills
+## Skill format
 
-See [Claude Code Skills documentation](https://code.claude.com/docs/en/skills) for the full Skills API.
+Each skill requires a `SKILL.md` with YAML frontmatter:
+
+```yaml
+---
+name: skill-name
+description: What it does and when to use it.
+---
+
+# Skill title
+
+Instructions...
+```
+
+Requirements:
+- Name: lowercase, hyphens, max 64 chars, matches directory
+- Description: max 1024 chars
+- SKILL.md: under 500 lines
+
+See [agentskills.io/specification.md](https://agentskills.io/specification.md) for full spec.
