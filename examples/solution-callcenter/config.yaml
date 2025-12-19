@@ -1,0 +1,161 @@
+# Call Center Configuration
+# This file defines the configuration for the AI-powered call center solution
+
+# Bot configuration
+bot:
+  name: "customer-support"
+  greeting_first: true  # Bot greets first when call connects
+
+# LLM configuration
+llm:
+  model: "claude-3-5-sonnet-20241022"  # Options: gpt-4o, claude-3-5-sonnet-20241022, etc.
+  temperature: 0.7
+  max_tokens: 2000
+
+# Voice configuration
+voice:
+  # Speech-to-Text (STT)
+  stt:
+    provider: "deepgram"
+    model: "nova-2"
+    language: "en-US"
+    interim_results: true
+    punctuate: true
+    smart_format: true
+
+  # Text-to-Speech (TTS)
+  tts:
+    provider: "elevenlabs"
+    voice_id: "21m00Tcm4TlvDq8ikWAM"  # Rachel - professional female voice
+    # Alternative voices:
+    # - 21m00Tcm4TlvDq8ikWAM: Rachel (default)
+    # - EXAVITQu4vr4xnSDxMaL: Bella
+    # - ErXwobaYiN019PkySvjV: Antoni
+    model: "eleven_turbo_v2_5"
+    stability: 0.5
+    similarity_boost: 0.75
+    optimize_streaming_latency: 3
+
+# Server configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  log_level: "info"  # Options: debug, info, warning, error
+  title: "Call Center API"
+  description: "AI-powered customer support call center"
+  version: "0.1.0"
+  enable_docs: true  # Enable /docs and /redoc
+  enable_metrics: true  # Enable /metrics endpoint
+
+  # CORS configuration
+  cors:
+    enabled: true
+    allow_origins:
+      - "http://localhost:3000"
+      - "https://your-domain.com"
+    allow_credentials: true
+    allow_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+    allow_headers:
+      - "*"
+
+# Twilio configuration
+twilio:
+  webhook_path: "/voice/twilio"
+  status_callback_path: "/voice/status"
+  # Recording (optional)
+  record_calls: false
+  recording_status_callback: "/voice/recording"
+
+# Database configuration (optional)
+database:
+  enabled: true
+  url: "${DATABASE_URL}"  # Will be loaded from environment
+  pool_size: 20
+  max_overflow: 10
+
+# Redis configuration (optional, for state management)
+redis:
+  enabled: true
+  url: "${REDIS_URL}"  # Will be loaded from environment
+  max_connections: 50
+
+# State management
+state:
+  backend: "redis"  # Options: memory, redis, postgres
+  ttl: 3600  # Conversation state TTL in seconds (1 hour)
+
+# Telemetry configuration
+telemetry:
+  enabled: false  # Enable OpenTelemetry tracing
+  service_name: "callcenter"
+  exporter: "otlp"  # Options: otlp, jaeger, zipkin
+  endpoint: "http://localhost:4317"  # OTLP gRPC endpoint
+  sample_rate: 1.0  # 1.0 = trace all requests
+
+# Workflows configuration
+workflows:
+  post_call:
+    enabled: true
+    summarize: true
+    update_crm: true
+    send_email: false  # Enable to send follow-up emails
+    create_ticket_threshold: 0.6  # Create support ticket if sentiment < 0.6
+
+# Skills configuration
+skills:
+  # Customer lookup
+  lookup_customer:
+    enabled: true
+    cache_ttl: 300  # Cache results for 5 minutes
+    mock_data: true  # Use mock data in development
+
+  # Order status
+  check_order_status:
+    enabled: true
+    cache_ttl: 60  # Cache for 1 minute
+    mock_data: true
+
+  # Callback scheduling
+  schedule_callback:
+    enabled: true
+    business_hours:
+      start: "09:00"
+      end: "17:00"
+      timezone: "America/New_York"
+    max_days_ahead: 30
+
+# Business rules
+business_rules:
+  # Escalation triggers
+  escalation:
+    keywords:
+      - "speak to manager"
+      - "supervisor"
+      - "cancel account"
+      - "legal action"
+    max_turns: 20  # Escalate if conversation exceeds this many turns
+    sentiment_threshold: 0.3  # Escalate if sentiment drops below this
+
+  # Call handling
+  call:
+    max_duration: 1800  # Max call duration in seconds (30 minutes)
+    silence_timeout: 30  # Hang up after N seconds of silence
+    greeting_delay: 1.0  # Delay before greeting (seconds)
+
+# Logging
+logging:
+  level: "info"
+  format: "json"  # Options: json, text
+  output: "stdout"  # Options: stdout, file
+  file_path: "logs/callcenter.log"  # Used if output=file
+
+# Feature flags
+features:
+  sentiment_analysis: true
+  call_recording: false
+  real_time_transcription: true
+  post_call_survey: false
