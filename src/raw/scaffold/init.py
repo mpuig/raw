@@ -112,8 +112,8 @@ This directory contains RAW workflow orchestration data.
 ## Quick Start
 
 ```bash
-raw onboard    # Get agent integration instructions
-raw prime      # Get session context
+raw show --context   # Get session context for agents
+raw list             # View workflows
 ```
 
 ## Contents
@@ -128,8 +128,8 @@ Note: Tools live in `tools/` at project root (not here).
 
 ## Learn More
 
-- Run `raw onboard` for agent integration instructions
-- Run `raw prime` for session context
+- Run `raw show --context` for agent session context
+- Run `raw init --hooks` for Claude Code integration
 - See project README for documentation
 """
     readme_path = raw_dir / "README.md"

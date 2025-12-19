@@ -7,7 +7,7 @@ from pathlib import Path
 
 from raw.discovery.display import console, print_info, print_success
 
-RAW_HOOK_COMMAND = "raw prime"
+RAW_HOOK_COMMAND = "raw show --context"
 RAW_SKILLS = ["raw-workflow-creator", "raw-tool-creator"]
 
 
@@ -190,7 +190,7 @@ def hooks_install_command() -> None:
         console.print(f"  Skills: {_get_project_skills_dir()}")
         for skill in installed_skills:
             console.print(f"    - {skill}")
-    console.print("\n  Hooks run [cyan]raw prime[/] on session start.")
+    console.print("\n  Hooks run [cyan]raw show --context[/] on session start.")
     if installed_skills:
         console.print("  Skills are auto-invoked by Claude when creating workflows/tools.")
 

@@ -15,9 +15,6 @@
 # 2. Test with mock data
 raw run {{ workflow_id }} --dry
 
-# 3. Publish when ready
-raw publish {{ workflow_id }}
-
-# 4. Run the published workflow
+# 3. Run the workflow
 raw run {{ workflow_id }}
 ```

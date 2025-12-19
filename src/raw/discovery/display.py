@@ -350,7 +350,7 @@ def print_draft_created(workflow_dir: Path, workflow_id: str, intent: str) -> No
             f"[dim]Next steps:[/]\n"
             f"  1. Implement [cyan]run.py[/] in the workflow directory\n"
             f"  2. Run [cyan]raw run {workflow_id} --dry[/] to test with mock data\n"
-            f"  3. Run [cyan]raw publish {workflow_id}[/] when ready",
+            f"  3. Run [cyan]raw run {workflow_id}[/] to execute",
             title="[bold]RAW[/]",
             border_style="yellow",
         )
@@ -413,7 +413,7 @@ def print_workflow_duplicated(
             f"[dim]Next steps:[/]\n"
             f"  1. Modify the workflow as needed\n"
             f"  2. Run [cyan]raw run {new_id} --dry[/] to test\n"
-            f"  3. Run [cyan]raw publish {new_id}[/] when ready",
+            f"  3. Run [cyan]raw run {new_id}[/] to execute",
             title="[bold]RAW[/]",
             border_style="cyan",
         )

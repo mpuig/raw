@@ -15,11 +15,10 @@ stories = fetch_top_stories(limit=3)
 ### Quick Reference
 
 ```bash
-raw search "stock data"           # Search existing tools (DO THIS FIRST)
+raw list tools -s "stock data"    # Search existing tools (DO THIS FIRST)
 raw list tools                    # Browse all tools
 raw create <name> --intent "..."  # Create workflow
 raw create <name> --tool -d "..." # Create tool (only if search finds nothing)
-raw install <url>                 # Install remote tool from Git
 raw run <id> --dry                # Test with mocks
 raw run <id> [args]               # Execute
 ```
@@ -29,7 +28,7 @@ raw run <id> [args]               # Execute
 ## Workflow Creation
 
 **Key Directives**:
-1. **SEARCH FIRST** - `raw search "capability"` before creating tools
+1. **SEARCH FIRST** - `raw list tools -s "capability"` before creating tools
 2. **TOOLS ARE LIBRARIES** - Reusable packages in `tools/`, created on-demand
 3. **AUTO-SNAPSHOT** - `raw run` copies tools to `_tools/` automatically
 4. **TEST BEFORE DELIVERY** - Always `raw run --dry` before telling user it's ready
@@ -41,8 +40,7 @@ raw run <id> [args]               # Execute
 raw create <name> --intent "..."
 
 # 2. For each capability needed in run.py:
-raw search "hackernews"                    # Search first
-# Found remote? raw install <url>
+raw list tools -s "hackernews"             # Search first
 # Not found? Create: tools/hackernews/tool.py + __init__.py + config.yaml
 # Then import: from tools.hackernews import fetch_top_stories
 
@@ -108,7 +106,7 @@ if __name__ == "__main__":
 Tools are Python packages in `tools/` with: `tool.py`, `__init__.py`, `config.yaml`
 
 ```bash
-raw search "capability"              # 1. Search first!
+raw list tools -s "capability"       # 1. Search first!
 raw create <name> --tool -d "..."    # 2. Create scaffold
 # 3. Implement tools/<name>/tool.py
 # 4. Export in tools/<name>/__init__.py
