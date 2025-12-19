@@ -122,13 +122,13 @@ raw logs hello-world
 
 | Command | Purpose |
 | :--- | :--- |
-| `raw init` | Initialize RAW in current directory |
+| `raw init` | Initialize RAW (`--hooks` for Claude Code) |
 | `raw create <name>` | Create a workflow (`--tool` for tools) |
 | `raw run <id>` | Execute a workflow (`--dry` for testing) |
-| `raw list` | List workflows and tools |
-| `raw search <query>` | Find existing tools |
+| `raw list` | List workflows and tools (`-s` to search) |
+| `raw show <id>` | View details (`--logs`, `--context`) |
 
-Run `raw --help` for all commands.
+Run `raw --help` for options.
 
 ---
 
