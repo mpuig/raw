@@ -283,119 +283,11 @@ Workflow created and tested:
 - To publish: raw publish <id>
 ```
 
-## Using Decorators (Optional)
+## Decorators
 
-For advanced tracking, retry, and caching:
+See [references/decorator_usage.md](references/decorator_usage.md) for `@step`, `@retry`, and `@cache_step` usage.
 
-```python
-from raw_runtime import step, retry, cache_step
-
-class Workflow:
-    @step("fetch")
-    @retry(retries=3, backoff="exponential")
-    def fetch(self) -> dict:
-        """Tracked + auto-retry."""
-        return requests.get(url).json()
-
-    @step("process")
-    @cache_step
-    def process(self, data: dict) -> dict:
-        """Tracked + cached."""
-        return expensive_operation(data)
-```
-
-## LLM-Powered Steps with @agent (Optional)
-
-For workflow steps that need AI reasoning, use the `@agent` decorator from `raw_ai`:
-
-```python
-# /// script
-# dependencies = ["pydantic>=2.0", "pydantic-ai>=0.0.17"]
-# ///
-
-from pydantic import BaseModel
-from raw_runtime import BaseWorkflow
-from raw_ai import agent
-
-class SentimentResult(BaseModel):
-    score: float
-    label: str
-    reasoning: str
-
-class AnalysisWorkflow(BaseWorkflow):
-    @agent(result_type=SentimentResult, model="gpt-4o-mini")
-    def analyze_sentiment(self, text: str) -> SentimentResult:
-        """You are a sentiment analyst. Analyze the text and return:
-        - score: -1 (negative) to 1 (positive)
-        - label: positive, negative, or neutral
-        - reasoning: brief explanation
-        """
-        ...
-
-    def run(self) -> int:
-        result = self.analyze_sentiment(self.params.text)
-        self.save("sentiment.json", result.model_dump())
-        return 0
-```
-
-**How @agent works:**
-- **Docstring → System prompt**: The method's docstring becomes the LLM's instructions
-- **Arguments → User message**: Method arguments are formatted as the user input
-- **result_type → Structured output**: The Pydantic model defines the output schema
-
-**Supported models:**
-- OpenAI: `gpt-4o`, `gpt-4o-mini`, `o1-preview` (requires `OPENAI_API_KEY`)
-- Anthropic: `claude-3-5-sonnet-latest` (requires `ANTHROPIC_API_KEY`)
-- Groq: `llama-3.1-70b-versatile` (requires `GROQ_API_KEY`)
-
-**When to use @agent vs tools:**
-- Use **tools** for deterministic operations (API calls, data processing, file operations)
-- Use **@agent** for tasks requiring reasoning (summarization, classification, extraction, analysis)
-
-See `docs/AI_AGENTS.md` for full documentation.
-
-## Architecture Patterns
-
-Use these patterns to guide your workflow design:
-
-### 1. Webhook Processor (Event-Driven)
-**Goal:** Process external data immediately when it arrives.
-**Requirement:** `raw serve` must be running.
-```python
-from raw_runtime import wait_for_webhook
-
-@step("wait")
-def wait_for_data(self):
-    # Pauses workflow until POST /webhook/<id> receives data
-    return wait_for_webhook("incoming_data")
-```
-
-### 2. Human-in-the-Loop (Approval)
-**Goal:** Pause for safety before critical actions (e.g., API writes, deployment).
-```python
-from raw_runtime import wait_for_approval
-
-@step("approve")
-def check_safety(self, plan):
-    # Pauses until user approves via Console or Dashboard
-    decision = wait_for_approval(f"Execute plan: {plan}?")
-    if decision != "approve":
-        raise ValueError("Plan rejected by user")
-```
-
-### 3. Cron Job (Scheduled)
-**Goal:** Run periodically (triggered by external scheduler via `raw run`).
-**Design:** Ensure **idempotency**. Running the workflow twice shouldn't duplicate data.
-```python
-@step("check")
-def check_if_needed(self):
-    if self.already_processed_today():
-        print("Skipping.")
-        return
-    self.do_work()
-```
-
-## Decision Tree
+## Decision tree
 
 ```
 User wants workflow
@@ -445,48 +337,9 @@ User wants workflow
     └─► Report success to user
 ```
 
-## Common Patterns
+See [references/workflow_patterns.md](references/workflow_patterns.md) for data pipeline, aggregation, and report generation patterns.
 
-### Data Pipeline (Using Tools)
-```python
-# tools/csv_processor/tool.py exists with read_csv, aggregate functions
-from tools.csv_processor import read_csv, aggregate_by
-
-def fetch(self) -> pd.DataFrame:
-    return read_csv(self.params.input_file)
-
-def process(self, df: pd.DataFrame) -> pd.DataFrame:
-    return aggregate_by(df, column="category", operation="sum")
-
-def save(self, df: pd.DataFrame) -> str:
-    path = self.results_dir / "output.csv"
-    df.to_csv(path)
-    return str(path)
-```
-
-### API Integration (Using Tools)
-```python
-# First: raw create my_api --tool -d "Client for MyService API"
-# Then: implement tools/my_api/tool.py with authentication
-from tools.my_api import fetch_data
-
-@step("fetch")
-def fetch(self) -> dict:
-    # Tool handles auth, timeouts, retries internally
-    return fetch_data(endpoint=self.params.endpoint)
-```
-
-### Report Generation
-```python
-def save(self, result: dict) -> str:
-    # Markdown report - local processing, no tool needed
-    report = f"# Report\n\n## Results\n\n{json.dumps(result, indent=2)}"
-    path = self.results_dir / "report.md"
-    path.write_text(report)
-    return str(path)
-```
-
-## Validation Checklist
+## Validation checklist
 
 Before reporting success:
 - [ ] **All external calls use tools** (no `httpx.get`, `requests.get`, etc. in run.py)
@@ -538,58 +391,13 @@ If you cannot resolve an error after 2 attempts:
 3. Suggest alternatives or workarounds
 4. Ask the user how they'd like to proceed
 
-## Common Pitfalls & Error Catalog
+## Common pitfalls
 
-Avoid these frequent mistakes. If you encounter these errors, apply the fixes immediately.
+**#1 mistake: Direct API calls in workflows.** Never write `httpx.get()` or `requests.get()` in run.py. Move API logic to a tool, then import it.
 
-| Error / Pitfall | Cause | Solution |
-|-----------------|-------|----------|
-| `ModuleNotFoundError: No module named 'pandas'` | Missing dependency in script header | Add `# /// script dependencies = ["pandas"]` |
-| `requests.exceptions.ConnectionError` | Network flake or API down | Use `@retry(retries=3)` decorator |
-| `TimeoutError` / Hanging process | No timeout on HTTP call | **ALWAYS** use `timeout=30` in requests |
-| `401 Unauthorized` | Hardcoded/Missing API key | Use `os.environ.get("KEY")` + `.env` file |
-| `429 Too Many Requests` | Rate limit hit | Add `time.sleep(N)` between loop iterations |
-| **Direct API calls in run.py** | **Violates Architecture** | **Move logic to a tool, then import** |
-| `AttributeError: module 'tools' has no attribute 'X'` | `__init__.py` not updated | Add `from .tool import X` to `tools/<name>/__init__.py` |
+See [references/testing_guide.md](references/testing_guide.md) for error catalog and troubleshooting.
 
-### ⛔ #1 Mistake: Direct API Calls in Workflows
-
-This is the most common violation. **Every time you write `httpx.get()`, `requests.get()`, or similar in run.py, you're doing it wrong.**
-
-```python
-# ⛔ WRONG - This is NOT how RAW workflows should work
-@step("fetch")
-def fetch_crypto_prices(self) -> dict:
-    response = httpx.get("https://api.coingecko.com/api/v3/simple/price",
-                         params={"ids": "bitcoin,ethereum", "vs_currencies": "usd"})
-    return response.json()
-```
-
-```python
-# ✅ CORRECT - API logic lives in a tool
-# 1. First: raw search "coingecko"
-# 2. Not found: raw create coingecko --tool -d "Fetch crypto prices from CoinGecko"
-# 3. Implement tools/coingecko/tool.py
-# 4. Now use in workflow:
-
-from tools.coingecko import get_prices
-
-@step("fetch")
-def fetch_crypto_prices(self) -> dict:
-    return get_prices(coins=["bitcoin", "ethereum"], currency="usd")
-```
-
-**The test:** Before writing run.py, ask yourself: "Does this code make HTTP requests, query databases, or call external services?" If yes, it belongs in a tool.
-
-### API-Specific Issues
-
-**Alpha Vantage:** Free tier limited to 5 calls/minute. Add `time.sleep(12)` between calls.
-
-**News API:** Free tier only returns 100 results. Use pagination for more.
-
-**OpenAI/Anthropic:** Token limits vary by model. Check `max_tokens` parameter.
-
-## Progress Communication
+## Progress communication
 
 Keep the user informed during workflow creation:
 
@@ -649,37 +457,9 @@ Be specific about what failed and what to do:
   Would you like me to help troubleshoot?
 ```
 
-## Security Checklist
+## Security
 
-Before delivering any workflow:
-
-- [ ] **No hardcoded secrets** - All API keys use environment variables
-- [ ] **No secrets in logs** - Don't print API keys or tokens
-- [ ] **Input validation** - Validate user inputs before using them
-- [ ] **Safe file paths** - Don't allow path traversal (`../`)
-- [ ] **Timeout on all requests** - Prevent hanging on unresponsive APIs
-- [ ] **No eval/exec** - Never execute user-provided code
-
-### Environment Variable Pattern
-```python
-import os
-
-api_key = os.environ.get("API_KEY")
-if not api_key:
-    raise ValueError("API_KEY environment variable not set. Add it to .env file.")
-```
-
-### Safe File Handling
-```python
-from pathlib import Path
-
-def save_result(filename: str, data: str) -> Path:
-    # Prevent path traversal
-    safe_name = Path(filename).name  # Strips any directory components
-    output_path = self.results_dir / safe_name
-    output_path.write_text(data)
-    return output_path
-```
+See [references/security.md](references/security.md) for security checklist and secure coding patterns.
 
 ## References
 
