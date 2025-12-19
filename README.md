@@ -125,15 +125,55 @@ Workflows follow five **Agent-Native Code Rules** that ensure robust, testable, 
 4. **IO Isolation** - Pure steps return data, save in `run()`
 5. **Semantic Logging** - `self.log()` for business progress
 
-See [docs/GUIDE.md](docs/GUIDE.md) for detailed guidance.
+See individual package READMEs for detailed guidance.
+
+## Packages
+
+RAW is a uv workspace monorepo. Each package can be installed independently.
+
+### Core
+
+| Package | Description |
+| :--- | :--- |
+| `raw-core` | Shared types, errors, and base protocols |
+| `raw-bot` | Transport-agnostic conversation engine |
+| `raw-agent` | Workflow execution with @step, @retry, @cache decorators |
+| `raw-cli` | Command-line interface |
+| `raw-codegen` | Code generation utilities |
+| `raw-creator` | Tool and workflow creation |
+
+### Integrations
+
+| Package | Description |
+| :--- | :--- |
+| `integration-llm` | LiteLLM wrapper for multi-provider LLM support |
+| `integration-deepgram` | Speech-to-text via Deepgram |
+| `integration-elevenlabs` | Text-to-speech via ElevenLabs |
+| `integration-twilio` | Voice calls and SMS |
+
+### Transports
+
+| Package | Description |
+| :--- | :--- |
+| `transport-voice` | Real-time voice pipeline (Pipecat) |
+| `transport-webhook` | HTTP webhook handlers |
+
+### Infrastructure
+
+| Package | Description |
+| :--- | :--- |
+| `raw-state` | Session state backends (Redis, PostgreSQL) |
+| `raw-queue` | Message queue backends (SQS, Kafka) |
+| `raw-telemetry` | OpenTelemetry tracing and metrics |
+| `raw-server` | Production FastAPI server with health checks |
+
+## Examples
+
+- `examples/solution-callcenter/` — Full call center implementation with skills, workflows, and Twilio integration
 
 ## Documentation
 
--   **[docs/QUICKSTART.md](docs/QUICKSTART.md)** - 30-second setup guide
--   **[docs/GUIDE.md](docs/GUIDE.md)** - Building workflows and best practices
--   **[docs/API.md](docs/API.md)** - Runtime API reference
--   **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Event-driven design
--   **[CLAUDE.md](CLAUDE.md)** - Development guide
+- **[CLAUDE.md](CLAUDE.md)** — Development guide
 
 ## Inspiration
 

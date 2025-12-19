@@ -46,14 +46,25 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["packages/*", "packages/integrations/*"]
+members = ["packages/*", "packages/integrations/*", "packages/transports/*"]
 
 [tool.uv.sources]
 raw-core = { workspace = true }
 raw-bot = { workspace = true }
 raw-agent = { workspace = true }
 raw-cli = { workspace = true }
+raw-codegen = { workspace = true }
+raw-creator = { workspace = true }
+raw-state = { workspace = true }
+raw-queue = { workspace = true }
+raw-telemetry = { workspace = true }
+raw-server = { workspace = true }
 integration-llm = { workspace = true }
+integration-deepgram = { workspace = true }
+integration-elevenlabs = { workspace = true }
+integration-twilio = { workspace = true }
+transport-voice = { workspace = true }
+transport-webhook = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
