@@ -18,9 +18,7 @@ The agent "logs in" to RAW via the CLI—much like a developer uses AWS to deplo
 
 RAW is **agent-native**: designed to be piloted by AI agents. While humans can (and should) use the CLI for debugging, observability, and manual intervention, the primary operator is your AI agent.
 
-**Quick start:** [docs/QUICKSTART.md](docs/QUICKSTART.md)
-
-### Scenario 1: Just-in-Time Capability
+### Scenario 1: Just-in-time capability
 You ask for an outcome. The agent builds the tool to deliver it.
 
 > **Human:** "Fetch the top stories from Hacker News and summarize them."
@@ -35,7 +33,7 @@ You ask for an outcome. The agent builds the tool to deliver it.
     *   `raw run hn-summary` (Executes)
 3.  **Result:** "Here are today's top stories..."
 
-### Scenario 2: System Observability
+### Scenario 2: System observability
 You ask about the state of the system.
 
 > **Human:** "What workflows do I have? Show me the last run."
@@ -74,7 +72,53 @@ For full documentation, run `raw onboard`.
 
 ---
 
-## The Agent's API (CLI Reference)
+## Testing with Claude Code
+
+After installation, you can test the integration:
+
+### 1. Check what context Claude Code receives
+
+```bash
+raw prime
+```
+
+This outputs available workflows, tools, and recent execution history. The `SessionStart` hook runs this automatically when Claude Code starts a session.
+
+### 2. View the installed hooks
+
+```bash
+cat .claude/settings.local.json
+```
+
+### 3. Test end-to-end
+
+Open Claude Code in the project directory and try:
+
+- "What workflows do I have?"
+- "Create a workflow that fetches weather data"
+- "Run the weather workflow"
+
+Claude Code will use `raw create`, write `run.py`, and execute with `raw run`.
+
+### 4. Manual workflow test
+
+```bash
+# Create a workflow
+raw create hello-world --intent "Print hello world"
+
+# Test with mock data
+raw run hello-world --dry
+
+# Execute
+raw run hello-world
+
+# Check logs
+raw logs hello-world
+```
+
+---
+
+## The agent's API (CLI reference)
 
 While designed for agents, these commands are available for debugging or manual intervention.
 
