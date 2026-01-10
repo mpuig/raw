@@ -2,6 +2,9 @@
 
 This document explains RAW's event-driven architecture and the rationale behind key design decisions.
 
+**Audience:** Developers, contributors
+**Type:** Architecture (deep dive)
+
 ---
 
 ## Core Concept: Event-Driven
@@ -692,4 +695,4 @@ count = rebuild_index_from_journals(
 - [../README.md](../README.md) - Project overview
 - [QUICKSTART.md](QUICKSTART.md) - Setup guide
 - [GUIDE.md](GUIDE.md) - Building workflows
-- [API.md](API.md) - Runtime API reference
+- [REFERENCE.md](REFERENCE.md) - CLI + API reference

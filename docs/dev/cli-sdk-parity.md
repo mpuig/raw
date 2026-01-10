@@ -2,6 +2,13 @@
 
 This document tracks parity between RAW CLI commands and SDK functions, ensuring agents can do programmatically via SDK what users do via CLI. This is a core agent-native principle.
 
+**Audience:** Developers, contributors
+**Type:** Strategy + roadmap
+
+This is an internal audit. For the public surfaces, start with:
+- `docs/REFERENCE.md`
+- `docs/ARCHITECTURE.md`
+
 ## Summary
 
 - **Total CLI Commands**: 14
@@ -290,9 +297,8 @@ All SDK functions should have corresponding tests in `tests/raw_sdk/`:
 
 ## Related Documentation
 
-- `..src/raw/sdk/README.md` - SDK usage guide
-- `..CLAUDE.md` - RAW development guide
-- `..docs/agent-native-guide.md` - Agent-native principles
+- `src/raw/sdk/` - SDK implementations
+- `CLAUDE.md` - RAW development guide
 
 ---
 

@@ -3,6 +3,13 @@
 **Epic**: raw-7kx - Builder v1: raw build loop + repo skills
 **Created**: 2026-01-10
 **Status**: Design Phase
+**Audience:** Developers, contributors
+**Type:** Design doc
+
+This is an internal design document. For day-to-day usage, start with:
+- `docs/BUILDER.md`
+- `docs/GUIDE.md`
+- `docs/REFERENCE.md`
 
 ## Overview
 

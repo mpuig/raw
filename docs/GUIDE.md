@@ -2,6 +2,9 @@
 
 Guide for building workflows with RAW.
 
+**Audience:** Users, agents
+**Type:** Guide
+
 **New to RAW?** Start with [QUICKSTART.md](QUICKSTART.md).
 
 ---
@@ -110,7 +113,10 @@ For Claude Code integration, run init with the hooks flag:
 raw init --hooks
 ```
 
-This creates `.claude/settings.local.json` with hooks that run `raw show --context` on session start, giving Claude awareness of your workflows and tools.
+This installs two things:
+
+1. **Hooks** (`.claude/settings.local.json`) that run `raw show --context` on session start (and before compaction), giving the agent awareness of your workflows/tools.
+2. **Project skills** (`.claude/skills/`) that teach the agent how to use RAW (search-first, create workflow/tool scaffolds, dry-run testing).
 
 For manual context refresh:
 
@@ -234,6 +240,13 @@ Done!
 
 Tools are reusable components that can be shared across workflows.
 
+### Search Tools (Before Creating)
+
+```bash
+raw search "what you need"
+raw list tools
+```
+
 ### Create a Tool
 
 ```bash
@@ -253,6 +266,14 @@ tools/fetch_data/
 
 ```bash
 raw list tools
+```
+
+### Install / Uninstall Tools
+
+```bash
+raw install https://github.com/user/my-tool
+raw install https://github.com/user/my-tool --ref v1.0.0
+raw uninstall my_tool
 ```
 
 ### View Tool Details
@@ -347,7 +368,7 @@ def summarize(self, text: str) -> Summary:
     ...
 ```
 
-The docstring becomes the system prompt, arguments become the user message, and `result_type` defines the structured output. See [AI_AGENTS.md](AI_AGENTS.md) for full documentation.
+The docstring becomes the system prompt, arguments become the user message, and `result_type` defines the structured output. See [REFERENCE.md](REFERENCE.md) for details on `raw_ai`.
 
 ## CLI Reference
 
@@ -415,5 +436,5 @@ results_dir.mkdir(exist_ok=True)
 ## See Also
 
 - [QUICKSTART.md](QUICKSTART.md) - 30-second setup
-- [API.md](API.md) - Runtime API reference
+- [REFERENCE.md](REFERENCE.md) - CLI + API reference
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Event-driven design

@@ -2,6 +2,9 @@
 
 The RAW builder is an agentic system that iteratively develops workflows through plan → execute → verify cycles.
 
+**Audience:** Users, agents
+**Type:** Guide
+
 ## Overview
 
 The builder automates workflow development by:

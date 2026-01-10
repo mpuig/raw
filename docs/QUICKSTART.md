@@ -2,6 +2,9 @@
 
 Get RAW running.
 
+**Audience:** Users, agents
+**Type:** Quickstart
+
 ## Prerequisites
 
 - Python 3.10+
@@ -62,4 +65,4 @@ Results are saved in the workflow's `results/` directory.
 
 - **Build your own workflow:** See [GUIDE.md](GUIDE.md)
 - **Understand the architecture:** See [ARCHITECTURE.md](ARCHITECTURE.md)
-- **API reference:** See [API.md](API.md)
+- **Reference:** See [REFERENCE.md](REFERENCE.md)
