@@ -3,8 +3,8 @@
 from pathlib import Path
 
 from raw.builder.skills import Skill, discover_skills
-from raw.discovery.tool import list_tools
 from raw.discovery.workflow import list_workflows
+from raw.sdk.tools import list_tools
 
 
 class BuilderContext:
@@ -74,7 +74,7 @@ You can search for existing tools before creating new ones:
         if self.tools:
             prompt += "**Discovered Tools:**\n"
             for tool in self.tools[:20]:  # Show first 20
-                prompt += f"- `{tool['name']}`: {tool.get('description', 'No description')}\n"
+                prompt += f"- `{tool.name}`: {tool.description}\n"
             if len(self.tools) > 20:
                 prompt += f"\n...and {len(self.tools) - 20} more. Use search to find specific capabilities.\n"
         else:
