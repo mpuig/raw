@@ -106,6 +106,10 @@ from raw_runtime.reconcile import (
     scan_and_reconcile,
 )
 from raw_runtime.reducer import ManifestReducer
+from raw_runtime.resume import (
+    configure_context_for_resume,
+    prepare_resume_state,
+)
 from raw_runtime.manifest import (
     LocalManifestWriter,
     ManifestBuilder,
@@ -239,6 +243,9 @@ __all__ = [
     "ReconciliationResult",
     "reconcile_run",
     "scan_and_reconcile",
+    # Resume
+    "prepare_resume_state",
+    "configure_context_for_resume",
     # Provenance
     "capture_provenance",
     "get_git_info",

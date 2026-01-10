@@ -106,6 +106,21 @@ def raw_step(name: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
             context = get_workflow_context()
             started_at = datetime.now(timezone.utc)
 
+            # Check if this step should be skipped due to resume
+            if context and name in context.resume_completed_steps:
+                skip_reason = f"Resumed from run {context.resumed_from_run_id}"
+                context.skip_step(name, skip_reason)
+                context.emit(
+                    StepSkippedEvent(
+                        workflow_id=context.workflow_id,
+                        run_id=context.run_id,
+                        step_name=name,
+                        reason=skip_reason,
+                    )
+                )
+                # Return None for skipped steps (user ensures idempotence)
+                return None  # type: ignore[return-value]
+
             if context:
                 context.emit(
                     StepStartedEvent(

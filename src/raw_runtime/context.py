@@ -109,6 +109,10 @@ class WorkflowContext:
         self.agentic_costs: list[dict[str, Any]] = []
         self.total_agentic_cost: float = 0.0
 
+        # Resume state (for continuing interrupted runs)
+        self.resume_completed_steps: set[str] = set()
+        self.resumed_from_run_id: str | None = None
+
         self._manifest_builder = ManifestBuilder(
             workflow_id=workflow_id,
             short_name=short_name,
