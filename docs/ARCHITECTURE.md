@@ -384,6 +384,309 @@ def test_workflow_emits_events():
 
 ---
 
+## Production-Ready Data Plane
+
+RAW's data plane implements **append-only journaling** and **event sourcing** for crash safety, resumability, and provenance tracking. This architecture borrows from:
+- **Gas Town**: Durable work objects, explicit progress graphs
+- **Codex**: Append-only JSONL rollouts, typed item lifecycle events
+- **Kubernetes**: Reconciliation loops for crash detection
+
+### Core Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Workflow Execution                       │
+│                                                             │
+│  @step decorators → Events → EventBus → JournalHandler     │
+│                                            ↓                │
+│                                     events.jsonl            │
+└─────────────────────────────────────────────────────────────┘
+                                             │
+                    ┌────────────────────────┼────────────────────┐
+                    │                        │                    │
+                    ▼                        ▼                    ▼
+            ┌──────────────┐        ┌──────────────┐    ┌──────────────┐
+            │   Reducer    │        │ Reconciler   │    │    Index     │
+            │              │        │              │    │              │
+            │ Rebuild      │        │ Detect       │    │ Fast         │
+            │ manifest     │        │ crashes      │    │ queries      │
+            │ from events  │        │              │    │              │
+            └──────────────┘        └──────────────┘    └──────────────┘
+                    │                        │                    │
+                    ▼                        ▼                    ▼
+              manifest.json           CRASHED status         index.jsonl
+```
+
+### 1. Append-Only Journal (`events.jsonl`)
+
+Every workflow execution writes events to an append-only journal for crash recovery and provenance.
+
+**Format:**
+```jsonl
+{"version": 1, "event": {"event_type": "workflow.started", "workflow_id": "...", ...}}
+{"version": 1, "event": {"event_type": "workflow.provenance", "git_sha": "...", ...}}
+{"version": 1, "event": {"event_type": "step.started", "step_name": "fetch", ...}}
+{"version": 1, "event": {"event_type": "step.completed", "step_name": "fetch", ...}}
+{"version": 1, "event": {"event_type": "workflow.completed", ...}}
+```
+
+**Properties:**
+- **Crash-safe**: Events fsync'ed immediately after write
+- **Immutable**: Never modified, only appended
+- **Complete history**: Full execution trace from start to finish
+- **Rebuildable**: Manifest can be reconstructed from journal alone
+
+**Implementation:**
+```python
+from raw_runtime import LocalJournalWriter, JournalEventHandler
+
+# Set up journal handler
+journal_path = Path(".raw/runs/run_123/events.jsonl")
+writer = LocalJournalWriter(journal_path)
+handler = JournalEventHandler(journal_path)
+
+# Subscribe to event bus
+event_bus.subscribe(handler)
+
+# All events automatically written to journal
+```
+
+### 2. Manifest Reducer (Event Sourcing)
+
+The **ManifestReducer** rebuilds workflow state from the event journal using event sourcing.
+
+**Pattern:**
+```
+events.jsonl → [workflow.started, step.started, step.completed, ...] → reduce → manifest.json
+```
+
+**Implementation:**
+```python
+from raw_runtime import ManifestReducer
+
+reducer = ManifestReducer()
+manifest = reducer.reduce_from_file(Path("events.jsonl"))
+
+# Manifest contains:
+# - workflow metadata
+# - run status (SUCCESS/FAILED/CRASHED)
+# - all step results
+# - provenance info
+# - artifacts
+```
+
+**Benefits:**
+- **Crash recovery**: Rebuild manifest from journal if process dies
+- **Auditability**: Full event history preserved
+- **Time travel**: Replay events to any point
+- **Debugging**: Inspect exact event sequence that led to failure
+
+### 3. Run Reconciliation (Crash Detection)
+
+The **reconciler** detects and marks crashed/stale runs using a Kubernetes-style reconciliation loop.
+
+**How it works:**
+1. Scan run directories for incomplete runs (status = RUNNING)
+2. Check journal file modification time
+3. If inactive > timeout (default 1 hour), mark as CRASHED
+4. Append `workflow.failed` event with "CRASHED:" prefix
+
+**Implementation:**
+```python
+from raw_runtime import reconcile_run, scan_and_reconcile
+
+# Reconcile single run
+result = reconcile_run(
+    run_dir=Path(".raw/runs/run_123"),
+    stale_timeout_seconds=3600,  # 1 hour
+    mark_as_crashed=True
+)
+
+# Scan all runs
+results = scan_and_reconcile(
+    workflows_dir=Path(".raw/workflows"),
+    stale_timeout_seconds=3600
+)
+```
+
+**Crash detection:**
+- Uses file mtime as proxy for last activity
+- Writes terminal event back to journal (never deletes data)
+- Reducer recognizes "CRASHED:" prefix and sets `RunStatus.CRASHED`
+
+### 4. Resume (Continue Interrupted Runs)
+
+Workflows can resume from the last completed step after crashes or manual cancellation.
+
+**Resume flow:**
+1. Read journal from interrupted run
+2. Identify steps with `StepStatus.SUCCESS`
+3. Create new context with `resume_completed_steps` set
+4. Execute workflow - `@step` decorator skips completed steps
+
+**Implementation:**
+```python
+from raw_runtime import WorkflowContext, configure_context_for_resume
+
+# Create context for resumed run
+context = WorkflowContext(
+    workflow_id="my-workflow",
+    short_name="my-workflow",
+    parameters={"arg": "value"}
+)
+
+# Configure resume from previous run's journal
+configure_context_for_resume(
+    context,
+    journal_path=Path(".raw/runs/run_previous/events.jsonl")
+)
+
+# Execute workflow - completed steps automatically skipped
+with context:
+    result = my_workflow.run()
+```
+
+**Resume semantics:**
+- Skips steps that completed successfully
+- Reruns failed/incomplete steps
+- No mid-step resumption (step must complete or start over)
+- User ensures steps are idempotent (resume-safe)
+
+**Provenance:**
+- Resumed run links to original run via `resumed_from_run_id`
+- Both journals preserved for full audit trail
+
+### 5. Provenance Tracking
+
+Every workflow captures git state, tool versions, and configuration at start.
+
+**Captured metadata:**
+- **Git**: SHA, branch, dirty status
+- **Workflow**: File hash (SHA256)
+- **Tools**: Version hash for each tool in `tools/`
+- **Environment**: Python version, hostname, working directory
+- **Config**: RAW_* env vars (secrets redacted)
+
+**Implementation:**
+```python
+# Automatically captured on workflow start
+# Emits WorkflowProvenanceEvent after WorkflowStartedEvent
+
+# Access provenance from manifest
+from raw_runtime import ManifestReducer
+
+reducer = ManifestReducer()
+manifest = reducer.reduce_from_file(journal_path)
+
+if manifest.provenance:
+    print(f"Git SHA: {manifest.provenance.git_sha}")
+    print(f"Branch: {manifest.provenance.git_branch}")
+    print(f"Dirty: {manifest.provenance.git_dirty}")
+    print(f"Tools: {manifest.provenance.tool_versions}")
+```
+
+**Secrets redaction:**
+Environment variables containing `KEY`, `TOKEN`, `SECRET`, or `PASSWORD` are automatically redacted in provenance snapshots.
+
+### 6. Run Index (Fast Queries)
+
+The **RunIndex** provides fast queries over run history without scanning all journals.
+
+**Format:** Append-only JSONL
+```jsonl
+{"run_id": "run_123", "workflow_id": "my-workflow", "status": "success", ...}
+{"run_id": "run_124", "workflow_id": "my-workflow", "status": "crashed", ...}
+```
+
+**Capabilities:**
+```python
+from raw_runtime import RunIndexReader, RunIndexWriter
+
+reader = RunIndexReader(Path(".raw/index.jsonl"))
+
+# List runs with filters
+runs = reader.list_runs(
+    status=RunStatus.SUCCESS,
+    workflow_id="my-workflow",
+    offset=0,
+    limit=10
+)
+
+# Get specific run
+run = reader.get_run("run_123")
+
+# Count runs
+count = reader.count_runs(status=RunStatus.FAILED)
+```
+
+**Pagination:**
+- Cursor-based (offset + limit)
+- Stable ordering for consistent page boundaries
+- Efficient for large run histories
+
+**Rebuild:**
+```python
+from raw_runtime import rebuild_index_from_journals
+
+# Rebuild from all journals (for recovery)
+count = rebuild_index_from_journals(
+    workflows_dir=Path(".raw/workflows"),
+    index_path=Path(".raw/index.jsonl")
+)
+```
+
+### Directory Structure
+
+```
+.raw/
+├── workflows/
+│   └── my-workflow/
+│       └── runs/
+│           ├── run_20260110_120000/
+│           │   ├── events.jsonl        # Append-only event journal
+│           │   ├── manifest.json       # Derived from events.jsonl
+│           │   ├── output.log          # Stdout/stderr
+│           │   └── results/            # Artifacts
+│           └── run_20260110_130000/
+│               └── ...
+├── index.jsonl                          # Run index (fast queries)
+└── config.yaml                          # Project config
+```
+
+### Design Decisions
+
+**Why append-only?**
+- Crash safety: Partial writes don't corrupt existing data
+- Auditability: Complete history preserved
+- Simplicity: No update/delete logic needed
+
+**Why event sourcing?**
+- Single source of truth: Journal is canonical, manifest is derived
+- Recovery: Rebuild state after crashes
+- Debugging: Full execution trace available
+
+**Why not SQLite?**
+- JSONL is simpler and more portable
+- No locking/concurrency issues
+- Easy to inspect/debug with text tools
+- Sufficient for typical run volumes
+
+**Why reconciliation loops?**
+- Kubernetes pattern proven at scale
+- Handles edge cases (crashes, network failures)
+- Self-healing: System detects and corrects invalid states
+
+### Migration & Compatibility
+
+**No backward compatibility guarantees** for run formats during development. Older run directories may not be compatible with newer RAW versions. This is acceptable for a pre-1.0 project.
+
+**Future stability:** Post-1.0, we'll commit to:
+- Schema versioning in journal/index
+- Migration tools for major upgrades
+- Deprecation warnings for breaking changes
+
+---
+
 ## See Also
 
 - [../README.md](../README.md) - Project overview
