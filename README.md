@@ -124,11 +124,35 @@ raw logs hello-world
 | :--- | :--- |
 | `raw init` | Initialize RAW (`--hooks` for Claude Code) |
 | `raw create <name>` | Create a workflow (`--tool` for tools) |
+| `raw build <id>` | Build workflow with agentic loop (`--resume`, `--last`) |
+| `raw validate <id>` | Validate workflow structure |
 | `raw run <id>` | Execute a workflow (`--dry` for testing) |
 | `raw list` | List workflows and tools (`-s` to search) |
 | `raw show <id>` | View details (`--logs`, `--context`) |
 
 Run `raw --help` for options.
+
+### Builder
+
+The `raw build` command runs an agentic builder loop that:
+- Plans implementation in read-only mode
+- Executes changes to workflow and tools
+- Verifies with quality gates (validate, dry run, optional tests)
+- Iterates until gates pass or budget exhausted
+
+```bash
+# Start a new build
+raw build my-workflow
+
+# Resume interrupted build
+raw build --resume build-20240110-123456-abc123
+raw build --last  # Resume most recent build
+
+# Configure budget
+raw build my-workflow --max-iterations 5 --max-minutes 15
+```
+
+Builder state is journaled to `.raw/builds/<build-id>/events.jsonl` for resumability and observability.
 
 ---
 

@@ -71,6 +71,10 @@ raw list tools                   # Browse tools (only for small sets)
 raw create <name> --tool -d ".." # Create reusable tool
 raw create <name> --intent "..." # Create draft workflow
 raw create <name> --from <id>    # Duplicate workflow
+raw build <id>                   # Agentic builder loop
+raw build <id> --resume <build>  # Resume interrupted build
+raw build --last                 # Resume most recent build
+raw validate <id>                # Validate workflow structure
 raw run <id> --dry --init        # Generate mock template
 raw run <id> --dry               # Test with mocks
 raw publish <id>                 # Freeze workflow
