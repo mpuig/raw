@@ -1,6 +1,7 @@
 """Builder loop controller - orchestrates plan → execute → verify → iterate cycles."""
 
 import logging
+import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -176,7 +177,16 @@ async def builder_loop(
 
             if mode == BuildMode.PLAN:
                 # PLAN MODE: Generate numbered plan with gates
-                plan = await _run_plan_mode(journal, build_id, iteration, workflow_id, skills, config)
+                plan = await _run_plan_mode(
+                    journal,
+                    build_id,
+                    iteration,
+                    workflow_id,
+                    skills,
+                    config,
+                    intent=intent,
+                    last_failures=last_failures,
+                )
 
                 if not plan:
                     return _finish_failed(
@@ -313,6 +323,8 @@ async def _run_plan_mode(
     workflow_id: str,
     skills: list,
     config: BuilderConfig,
+    intent: str | None = None,
+    last_failures: list[str] | None = None,
 ) -> str | None:
     """Run plan mode - agent generates numbered plan.
 
@@ -323,40 +335,70 @@ async def _run_plan_mode(
         workflow_id: Workflow being built
         skills: Discovered skills
         config: Builder configuration
+        intent: User's original intent
+        last_failures: Previous failures for retry context
 
     Returns:
         Plan text or None if failed
     """
-    # TODO: Implement LLM integration
-    # For now, return a mock plan
-    plan = f"""
-## Analysis
-Workflow {workflow_id} needs implementation.
+    from raw.builder.context import BuilderContext
+    from raw.builder.llm import BuilderLLM
 
-## Approach
-Follow standard workflow pattern.
+    logger.info("Running plan mode with LLM...")
 
-## Steps
-1. Read existing run.py
-2. Validate structure
-3. Update as needed
-
-## Quality Gates
-- validate: Structural validation
-- dry: Dry run with mocks
-"""
-
-    journal.write(
-        PlanUpdatedEvent(
-            build_id=build_id,
-            iteration=iteration,
-            plan=plan,
-            gates=config.gates.default,
+    try:
+        # Build context
+        context = BuilderContext(
+            workflow_id=workflow_id,
+            intent=intent,
+            last_failures=last_failures or [],
         )
-    )
 
-    logger.info("Plan generated")
-    return plan
+        # Generate system prompt
+        system_prompt = context.build_system_prompt("plan")
+
+        # Inject system-architecture skill if available
+        skill_injection = context.format_skills_for_injection(["system-architecture"])
+        if skill_injection:
+            system_prompt += "\n" + skill_injection
+
+        # Build user message
+        if iteration == 1:
+            user_message = f"Create a plan for workflow '{workflow_id}'."
+            if intent:
+                user_message += f"\n\nUser requirements:\n{intent}"
+        else:
+            user_message = "The previous iteration failed. Create an updated plan that addresses the failures."
+
+        # Generate plan
+        llm = BuilderLLM()
+        plan = llm.generate(
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+            max_tokens=8192,
+            temperature=1.0,
+        )
+
+        # Save plan to build directory
+        plan_file = journal.build_dir / "plan.md"
+        plan_file.write_text(plan)
+
+        # Write event
+        journal.write(
+            PlanUpdatedEvent(
+                build_id=build_id,
+                iteration=iteration,
+                plan=plan,
+                gates=config.gates.default,
+            )
+        )
+
+        logger.info("Plan generated successfully")
+        return plan
+
+    except Exception as e:
+        logger.error("Failed to generate plan: %s", e)
+        return None
 
 
 async def _run_execute_mode(
@@ -365,6 +407,7 @@ async def _run_execute_mode(
     iteration: int,
     workflow_id: str,
     config: BuilderConfig,
+    plan: str | None = None,
 ) -> bool:
     """Run execute mode - agent implements plan.
 
@@ -374,14 +417,145 @@ async def _run_execute_mode(
         iteration: Current iteration
         workflow_id: Workflow being built
         config: Builder configuration
+        plan: The plan to execute
 
     Returns:
         True if execution succeeded
     """
-    # TODO: Implement LLM integration
-    # For now, assume execution succeeds
-    logger.info("Executing plan...")
-    return True
+    from anthropic import Anthropic
+    from anthropic.types import TextBlock, ToolUseBlock
+
+    from raw.builder.context import BuilderContext
+    from raw.builder.tools import get_builder_tools, handle_tool_call
+
+    logger.info("Running execute mode with LLM...")
+
+    try:
+        # Build context
+        context = BuilderContext(workflow_id=workflow_id)
+        system_prompt = context.build_system_prompt("execute")
+
+        # Load plan from build directory
+        if plan is None:
+            plan_file = journal.build_dir / "plan.md"
+            if plan_file.exists():
+                plan = plan_file.read_text()
+
+        # Initialize LLM with tools
+        llm = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        tools = get_builder_tools()
+
+        # Build initial message with plan
+        messages = []
+        if plan:
+            messages.append({
+                "role": "user",
+                "content": f"Execute this plan:\n\n{plan}",
+            })
+        else:
+            messages.append({
+                "role": "user",
+                "content": f"Implement workflow '{workflow_id}'.",
+            })
+
+        # Agentic loop - LLM uses tools until done
+        max_turns = 50  # Safety limit
+        for turn in range(max_turns):
+            logger.info("Execute mode turn %d/%d", turn + 1, max_turns)
+
+            # Call LLM with tools
+            response = llm.messages.create(
+                model="claude-sonnet-4-20250514",
+                system=system_prompt,
+                messages=messages,
+                max_tokens=8192,
+                tools=tools,
+            )
+
+            # Add assistant response to conversation
+            assistant_message = {"role": "assistant", "content": response.content}
+            messages.append(assistant_message)
+
+            # Check if we're done (no tool calls)
+            tool_uses = [block for block in response.content if isinstance(block, ToolUseBlock)]
+            if not tool_uses:
+                # Agent finished
+                logger.info("Execute mode completed")
+                return True
+
+            # Execute tool calls
+            tool_results = []
+            for tool_use in tool_uses:
+                logger.info("Executing tool: %s", tool_use.name)
+
+                # Log tool call event
+                from raw.builder.events import ToolCallStartedEvent
+
+                journal.write(
+                    ToolCallStartedEvent(
+                        build_id=build_id,
+                        iteration=iteration,
+                        tool=tool_use.name,
+                        parameters=tool_use.input,
+                    )
+                )
+
+                # Execute tool
+                try:
+                    result = await handle_tool_call(tool_use, workflow_id)
+
+                    # Log completion
+                    from raw.builder.events import ToolCallCompletedEvent
+
+                    journal.write(
+                        ToolCallCompletedEvent(
+                            build_id=build_id,
+                            iteration=iteration,
+                            tool=tool_use.name,
+                            success=True,
+                            result=str(result)[:500],  # Truncate for journal
+                        )
+                    )
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "content": result,
+                    })
+
+                except Exception as e:
+                    logger.warning("Tool call failed: %s", e)
+
+                    # Log failure
+                    from raw.builder.events import ToolCallCompletedEvent
+
+                    journal.write(
+                        ToolCallCompletedEvent(
+                            build_id=build_id,
+                            iteration=iteration,
+                            tool=tool_use.name,
+                            success=False,
+                            result=str(e),
+                        )
+                    )
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "content": f"Error: {e}",
+                        "is_error": True,
+                    })
+
+            # Add tool results to conversation
+            messages.append({"role": "user", "content": tool_results})
+
+        # Hit max turns without completion
+        logger.warning("Execute mode hit max turns (%d)", max_turns)
+        return False
+
+    except Exception as e:
+        logger.error("Execute mode failed: %s", e)
+        return False
 
 
 def _finish_stuck(
