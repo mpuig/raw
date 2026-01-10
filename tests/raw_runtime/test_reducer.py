@@ -472,3 +472,77 @@ class TestManifestReducer:
         assert manifest.run.status == RunStatus.RUNNING
         assert len(manifest.steps) == 1
         assert manifest.steps[0].status == StepStatus.RUNNING
+
+    def test_provenance_tracking(self) -> None:
+        """Test reducer captures provenance metadata."""
+        events = [
+            {
+                "event_type": "workflow.started",
+                "workflow_id": "test-workflow",
+                "run_id": "run_123",
+                "workflow_name": "TestWorkflow",
+                "timestamp": "2025-01-10T12:00:00Z",
+            },
+            {
+                "event_type": "workflow.provenance",
+                "workflow_id": "test-workflow",
+                "run_id": "run_123",
+                "git_sha": "abc123def456",
+                "git_branch": "main",
+                "git_dirty": False,
+                "workflow_hash": "deadbeef12345678",
+                "tool_versions": {"tool1": "v1", "tool2": "v2"},
+                "python_version": "3.10.18",
+                "raw_version": "0.1.0",
+                "hostname": "test-host",
+                "working_directory": "/home/user/project",
+                "config_snapshot": {"RAW_DEBUG": "true"},
+                "timestamp": "2025-01-10T12:00:00Z",
+            },
+            {
+                "event_type": "workflow.completed",
+                "workflow_id": "test-workflow",
+                "run_id": "run_123",
+                "duration_seconds": 1.0,
+                "step_count": 0,
+                "timestamp": "2025-01-10T12:00:01Z",
+            },
+        ]
+
+        reducer = ManifestReducer()
+        manifest = reducer.reduce_from_events(events)
+
+        # Should have provenance info
+        assert manifest.provenance is not None
+        assert manifest.provenance.git_sha == "abc123def456"
+        assert manifest.provenance.git_branch == "main"
+        assert manifest.provenance.git_dirty is False
+        assert manifest.provenance.workflow_hash == "deadbeef12345678"
+        assert manifest.provenance.tool_versions == {"tool1": "v1", "tool2": "v2"}
+        assert manifest.provenance.config_snapshot == {"RAW_DEBUG": "true"}
+
+    def test_workflow_without_provenance(self) -> None:
+        """Test reducer handles workflow without provenance event."""
+        events = [
+            {
+                "event_type": "workflow.started",
+                "workflow_id": "test-workflow",
+                "run_id": "run_123",
+                "workflow_name": "TestWorkflow",
+                "timestamp": "2025-01-10T12:00:00Z",
+            },
+            {
+                "event_type": "workflow.completed",
+                "workflow_id": "test-workflow",
+                "run_id": "run_123",
+                "duration_seconds": 1.0,
+                "step_count": 0,
+                "timestamp": "2025-01-10T12:00:01Z",
+            },
+        ]
+
+        reducer = ManifestReducer()
+        manifest = reducer.reduce_from_events(events)
+
+        # Provenance should be None if not provided
+        assert manifest.provenance is None

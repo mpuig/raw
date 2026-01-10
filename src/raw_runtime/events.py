@@ -22,6 +22,7 @@ class EventType(str, Enum):
     # Workflow lifecycle
     WORKFLOW_TRIGGERED = "workflow.triggered"
     WORKFLOW_STARTED = "workflow.started"
+    WORKFLOW_PROVENANCE = "workflow.provenance"
     WORKFLOW_COMPLETED = "workflow.completed"
     WORKFLOW_FAILED = "workflow.failed"
 
@@ -80,6 +81,22 @@ class WorkflowStartedEvent(BaseEvent):
     workflow_name: str
     workflow_version: str | None = None
     parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowProvenanceEvent(BaseEvent):
+    """Emitted immediately after workflow start with provenance metadata."""
+
+    event_type: EventType = EventType.WORKFLOW_PROVENANCE
+    git_sha: str | None = None
+    git_branch: str | None = None
+    git_dirty: bool = False
+    workflow_hash: str | None = None
+    tool_versions: dict[str, str] = Field(default_factory=dict)
+    python_version: str | None = None
+    raw_version: str | None = None
+    hostname: str | None = None
+    working_directory: str | None = None
+    config_snapshot: dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowCompletedEvent(BaseEvent):
@@ -216,6 +233,7 @@ class CacheMissEvent(BaseEvent):
 Event = (
     WorkflowTriggeredEvent
     | WorkflowStartedEvent
+    | WorkflowProvenanceEvent
     | WorkflowCompletedEvent
     | WorkflowFailedEvent
     | StepStartedEvent

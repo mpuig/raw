@@ -290,7 +290,8 @@ class WorkflowContext:
 
     def __enter__(self) -> "WorkflowContext":
         """Enter context manager."""
-        from raw_runtime.events import WorkflowStartedEvent
+        from raw_runtime.events import WorkflowProvenanceEvent, WorkflowStartedEvent
+        from raw_runtime.provenance import capture_provenance
 
         set_workflow_context(self)
         self.emit(
@@ -302,6 +303,17 @@ class WorkflowContext:
                 parameters=self.parameters,
             )
         )
+
+        # Emit provenance event immediately after workflow start
+        provenance = capture_provenance()
+        self.emit(
+            WorkflowProvenanceEvent(
+                workflow_id=self.workflow_id,
+                run_id=self.run_id,
+                **provenance,
+            )
+        )
+
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

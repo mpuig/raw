@@ -106,6 +106,21 @@ class ToolMetadata(BaseModel):
     )
 
 
+class ProvenanceInfo(BaseModel):
+    """Provenance metadata for a workflow run."""
+
+    git_sha: str | None = Field(default=None, description="Git commit SHA")
+    git_branch: str | None = Field(default=None, description="Git branch")
+    git_dirty: bool = Field(default=False, description="Uncommitted changes present")
+    workflow_hash: str | None = Field(default=None, description="Workflow file hash")
+    tool_versions: dict[str, str] = Field(
+        default_factory=dict, description="Tool name to version hash"
+    )
+    config_snapshot: dict[str, Any] = Field(
+        default_factory=dict, description="Config at run time (secrets redacted)"
+    )
+
+
 class Manifest(BaseModel):
     """Complete manifest for a workflow run.
 
@@ -122,4 +137,5 @@ class Manifest(BaseModel):
     steps: list[StepResult] = Field(default_factory=list, description="Step results")
     artifacts: list[Artifact] = Field(default_factory=list, description="Generated artifacts")
     logs: LogsInfo = Field(default_factory=LogsInfo, description="Log file paths")
+    provenance: ProvenanceInfo | None = Field(default=None, description="Provenance metadata")
     error: str | None = Field(default=None, description="Top-level error if run failed")

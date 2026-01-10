@@ -15,6 +15,7 @@ from raw_runtime.models import (
     EnvironmentInfo,
     LogsInfo,
     Manifest,
+    ProvenanceInfo,
     RunInfo,
     RunStatus,
     StepResult,
@@ -87,6 +88,7 @@ class ManifestReducer:
         # Multiple events for same step (started, retries, completed/failed)
         self._steps: dict[str, StepResult] = {}
         self._artifacts: list[Artifact] = []
+        self._provenance: dict[str, Any] | None = None
 
     def reduce_from_file(self, journal_path: Path) -> Manifest:
         """Reduce journal file to manifest.
@@ -134,6 +136,8 @@ class ManifestReducer:
 
         if event_type == "workflow.started":
             self._handle_workflow_started(event)
+        elif event_type == "workflow.provenance":
+            self._handle_workflow_provenance(event)
         elif event_type == "step.started":
             self._handle_step_started(event)
         elif event_type == "step.completed":
@@ -167,6 +171,17 @@ class ManifestReducer:
 
         # Set initial status
         self._status = RunStatus.RUNNING
+
+    def _handle_workflow_provenance(self, event: dict) -> None:
+        """Handle workflow.provenance event."""
+        self._provenance = {
+            "git_sha": event.get("git_sha"),
+            "git_branch": event.get("git_branch"),
+            "git_dirty": event.get("git_dirty", False),
+            "workflow_hash": event.get("workflow_hash"),
+            "tool_versions": event.get("tool_versions", {}),
+            "config_snapshot": event.get("config_snapshot", {}),
+        }
 
     def _handle_step_started(self, event: dict) -> None:
         """Handle step.started event."""
@@ -369,6 +384,11 @@ class ManifestReducer:
         # Convert steps dict to list (preserve insertion order)
         steps = list(self._steps.values())
 
+        # Build provenance if available
+        provenance_info = None
+        if self._provenance:
+            provenance_info = ProvenanceInfo(**self._provenance)
+
         return Manifest(
             schema_version="1.0.0",
             workflow=workflow_info,
@@ -376,6 +396,7 @@ class ManifestReducer:
             steps=steps,
             artifacts=self._artifacts,
             logs=logs,
+            provenance=provenance_info,
             error=self._error,
         )
 

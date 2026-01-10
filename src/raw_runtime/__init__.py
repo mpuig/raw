@@ -86,11 +86,20 @@ from raw_runtime.events import (
     StepStartedEvent,
     WorkflowCompletedEvent,
     WorkflowFailedEvent,
+    WorkflowProvenanceEvent,
     WorkflowStartedEvent,
     WorkflowTriggeredEvent,
 )
 from raw_runtime.handlers import ConsoleEventHandler, JournalEventHandler
 from raw_runtime.journal import JournalReader, JournalWriter, LocalJournalWriter
+from raw_runtime.provenance import (
+    capture_provenance,
+    get_config_snapshot,
+    get_environment_info,
+    get_git_info,
+    get_tool_versions,
+    get_workflow_hash,
+)
 from raw_runtime.reconcile import (
     ReconciliationResult,
     reconcile_run,
@@ -109,6 +118,7 @@ from raw_runtime.models import (
     EnvironmentInfo,
     LogsInfo,
     Manifest,
+    ProvenanceInfo,
     RunInfo,
     RunStatus,
     StepResult,
@@ -229,12 +239,20 @@ __all__ = [
     "ReconciliationResult",
     "reconcile_run",
     "scan_and_reconcile",
+    # Provenance
+    "capture_provenance",
+    "get_git_info",
+    "get_workflow_hash",
+    "get_tool_versions",
+    "get_environment_info",
+    "get_config_snapshot",
     # Events
     "Event",
     "EventType",
     "BaseEvent",
     "WorkflowTriggeredEvent",
     "WorkflowStartedEvent",
+    "WorkflowProvenanceEvent",
     "WorkflowCompletedEvent",
     "WorkflowFailedEvent",
     "StepStartedEvent",
@@ -270,6 +288,7 @@ __all__ = [
     "Manifest",
     "EnvironmentInfo",
     "LogsInfo",
+    "ProvenanceInfo",
     "ToolMetadata",
     # Environment & Providers
     "load_dotenv",

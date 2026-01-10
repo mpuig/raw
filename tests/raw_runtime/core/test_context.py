@@ -13,6 +13,7 @@ from raw_runtime.events import (
     Event,
     WorkflowCompletedEvent,
     WorkflowFailedEvent,
+    WorkflowProvenanceEvent,
     WorkflowStartedEvent,
 )
 from raw_runtime.models import RunStatus, StepResult, StepStatus
@@ -144,7 +145,7 @@ class TestContextEvents:
     """Tests verifying WorkflowContext via emitted events."""
 
     def test_context_manager_emits_workflow_started(self) -> None:
-        """Verify WorkflowStartedEvent is emitted when entering context."""
+        """Verify WorkflowStartedEvent and WorkflowProvenanceEvent are emitted when entering context."""
         bus = LocalEventBus()
         events: list[Event] = []
         bus.subscribe(lambda e: events.append(e))
@@ -157,11 +158,15 @@ class TestContextEvents:
         ):
             pass
 
-        assert len(events) == 1
+        assert len(events) == 2
         assert isinstance(events[0], WorkflowStartedEvent)
         assert events[0].workflow_id == "test-workflow-123"
         assert events[0].workflow_name == "test"
         assert events[0].parameters == {"key": "value"}
+
+        # Provenance event should be emitted after workflow started
+        assert isinstance(events[1], WorkflowProvenanceEvent)
+        assert events[1].workflow_id == "test-workflow-123"
 
     def test_add_artifact_emits_event(self, tmp_path: Path) -> None:
         """Verify ArtifactCreatedEvent is emitted when adding artifact."""
@@ -243,11 +248,17 @@ class TestContextEvents:
             ctx.add_artifact("output", test_file)
             ctx.finalize(status="success")
 
-        assert len(events) == 3
+        assert len(events) == 4
         assert isinstance(events[0], WorkflowStartedEvent)
-        assert isinstance(events[1], ArtifactCreatedEvent)
-        assert isinstance(events[2], WorkflowCompletedEvent)
+        assert isinstance(events[1], WorkflowProvenanceEvent)
+        assert isinstance(events[2], ArtifactCreatedEvent)
+        assert isinstance(events[3], WorkflowCompletedEvent)
 
         # Verify event sequence metadata consistency
-        assert events[0].workflow_id == events[1].workflow_id == events[2].workflow_id
-        assert events[2].artifacts == [str(test_file)]
+        assert (
+            events[0].workflow_id
+            == events[1].workflow_id
+            == events[2].workflow_id
+            == events[3].workflow_id
+        )
+        assert events[3].artifacts == [str(test_file)]
