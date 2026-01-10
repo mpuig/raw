@@ -63,25 +63,21 @@ raw init                         # Initialize .raw/ directory
 raw onboard                      # Agent integration instructions (for AGENTS.md)
 raw prime                        # Session context (workflows, tools)
 
-# RAW CLI - Tool Discovery (CRITICAL - always check before creating!)
-raw search "fetch stock data"    # Semantic search - USE THIS FIRST
-raw list tools                   # Browse tools (only for small sets)
-
-# RAW CLI - Build & Run
-raw create <name> --tool -d ".." # Create reusable tool
+# RAW CLI - 5 Core Commands
+raw init                         # Setup .raw/ directory
+raw create <name> --tool         # Create reusable tool
 raw create <name> --intent "..." # Create draft workflow
-raw create <name> --from <id>    # Duplicate workflow
 raw build <id>                   # Agentic builder loop
-raw build <id> --resume <build>  # Resume interrupted build
+raw build --resume <build>       # Resume interrupted build
 raw build --last                 # Resume most recent build
-raw validate <id>                # Validate workflow structure
-raw run <id> --dry --init        # Generate mock template
 raw run <id> --dry               # Test with mocks
-raw publish <id>                 # Freeze workflow
-raw run <id> --arg value         # Execute
-raw list                         # List workflows
-raw show <id>                    # View workflow details
-raw logs <id>                    # View execution logs
+raw run <id>                     # Execute workflow
+raw show                         # List all workflows
+raw show tools                   # List all tools
+raw show tools -s "fetch"        # Search tools
+raw show <id>                    # View details
+raw show <id> --validate         # Validate structure
+raw show <id> --logs             # View execution logs
 ```
 
 ---

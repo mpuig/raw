@@ -243,7 +243,7 @@ Events enable:
 
 1. **Start with validation** - Ensure workflow structure is correct before building
    ```bash
-   raw validate my-workflow
+   raw show my-workflow --validate
    ```
 
 2. **Use dry runs** - Test with mocks before real execution

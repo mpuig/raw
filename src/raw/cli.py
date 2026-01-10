@@ -3,9 +3,9 @@
 Simplified CLI with 5 core commands:
 - init: Setup RAW in a project
 - create: Create workflows and tools
+- build: Agentic builder loop
 - run: Execute workflows
-- list: List workflows and tools
-- show: View details, logs, and context
+- show: List, inspect, validate, and view logs
 """
 
 from typing import Annotated
@@ -19,14 +19,12 @@ from raw.commands import (
     create_command,
     hooks_install_command,
     init_command,
-    list_command,
     logs_command,
     prime_command,
     run_command,
     search_command,
     show_command,
     trigger_command,
-    validate_command,
 )
 from raw.discovery.display import console
 from raw.discovery.workflow import list_workflows
@@ -200,31 +198,6 @@ def build(
     build_command(workflow_id, max_iterations, max_minutes, resume, last, _prompt_workflow_selection)
 
 
-@app.command()
-def validate(
-    workflow_id: Annotated[
-        str | None,
-        typer.Argument(help="Workflow identifier to validate"),
-    ] = None,
-) -> None:
-    """Validate workflow structure and dependencies.
-
-    Checks:
-    - run.py exists and is valid Python
-    - PEP 723 metadata is present and correct
-    - Imported tools exist in tools/ directory
-    - Workflow uses BaseWorkflow pattern
-    - run() method is implemented
-
-    Exit Codes:
-        0 - Validation passed
-        1 - Validation failed (errors found)
-
-    Examples:
-        raw validate my-workflow     # Validate specific workflow
-        raw validate                 # Prompt for workflow
-    """
-    validate_command(workflow_id, _prompt_workflow_selection)
 
 
 @app.command()
@@ -259,38 +232,19 @@ def run(
         run_command(ctx, workflow_id, dry, init_dry, _prompt_workflow_selection)
 
 
-@app.command("list")
-def list_cmd(
-    what: Annotated[str, typer.Argument(help="What to list: workflows or tools")] = "workflows",
-    search: Annotated[
-        str | None,
-        typer.Option("--search", "-s", help="Search tools by description"),
-    ] = None,
-) -> None:
-    """List workflows or tools.
-
-    Examples:
-        raw list              # List workflows
-        raw list tools        # List tools
-        raw list tools -s "fetch stock"  # Search tools
-    """
-    if search and what == "tools":
-        search_command(search)
-    else:
-        list_command(what)
 
 
 @app.command()
 def show(
     identifier: Annotated[
         str | None,
-        typer.Argument(help="Workflow ID or tool name"),
+        typer.Argument(help="Workflow ID, tool name, or 'tools' (omit to list workflows)"),
     ] = None,
     logs: Annotated[
         bool, typer.Option("--logs", "-l", help="Show execution logs")
     ] = False,
-    context: Annotated[
-        bool, typer.Option("--context", "-c", help="Output agent context (for hooks)")
+    validate: Annotated[
+        bool, typer.Option("--validate", "-v", help="Validate workflow structure")
     ] = False,
     follow: Annotated[
         bool, typer.Option("--follow", "-f", help="Follow log output (with --logs)")
@@ -298,21 +252,34 @@ def show(
     lines: Annotated[
         int, typer.Option("--lines", "-n", help="Number of log lines (with --logs)")
     ] = 50,
+    search: Annotated[
+        str | None,
+        typer.Option("--search", "-s", help="Search tools by description (with 'tools')"),
+    ] = None,
 ) -> None:
-    """Show details for a workflow or tool.
+    """List, inspect, validate workflows and tools.
+
+    Without arguments, lists all workflows.
+    With 'tools', lists all tools.
+    With identifier, shows details for that workflow/tool.
 
     Examples:
+        raw show                       # List all workflows
+        raw show tools                 # List all tools
+        raw show tools -s "fetch"      # Search tools
         raw show my-workflow           # Show workflow details
+        raw show my-workflow --validate # Validate workflow structure
         raw show my-workflow --logs    # Show execution logs
         raw show my-workflow -l -f     # Follow logs
-        raw show --context             # Output agent context
+        raw show my-tool               # Show tool details
     """
-    if context:
-        prime_command()
+    # Handle tool search
+    if identifier == "tools" and search:
+        search_command(search)
     elif logs:
         logs_command(identifier, None, follow, lines, _prompt_workflow_selection)
     else:
-        show_command(identifier, _prompt_workflow_selection, runs=False)
+        show_command(identifier, _prompt_workflow_selection, runs=False, validate=validate)
 
 
 # Backward compatibility alias

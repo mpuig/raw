@@ -3,22 +3,22 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**RAW is the local infrastructure for AI agents to perform complex work.**
+**RAW is local infrastructure for AI agents to perform complex work.**
 
 It acts as a headless orchestration platform that separates **intelligence** (the agent) from **infrastructure** (RAW):
 
 -   **The Platform (RAW)** handles deterministic engineering: state management, logging, caching, retries, dependency isolation, and execution history.
 -   **The Client (Agent)** handles probabilistic reasoning: understanding user intent, generating logic, and reacting to errors.
 
-The agent "logs in" to RAW via the CLI—much like a developer uses AWS to deploy infrastructure—to build and execute durable workflows.
+The agent uses RAW via the CLI to build and execute durable workflows.
 
 ---
 
 ## Usage
 
-RAW is **agent-native**: designed to be piloted by AI agents. While humans can (and should) use the CLI for debugging, observability, and manual intervention, the primary operator is your AI agent.
+RAW is **agent-native**: designed for AI agents. While humans use the CLI for debugging, observability, and manual intervention, the primary operator is the AI agent.
 
-### Scenario 1: Just-in-time capability
+### Scenario 1: Building tools
 You ask for an outcome. The agent builds the tool to deliver it.
 
 > **Human:** "Fetch the top stories from Hacker News and summarize them."
@@ -33,7 +33,7 @@ You ask for an outcome. The agent builds the tool to deliver it.
     *   `raw run hn-summary` (Executes)
 3.  **Result:** "Here are today's top stories..."
 
-### Scenario 2: System observability
+### Scenario 2: System state
 You ask about the state of the system.
 
 > **Human:** "What workflows do I have? Show me the last run."
@@ -120,17 +120,29 @@ raw logs hello-world
 
 ## CLI
 
+RAW has **5 core commands**:
+
 | Command | Purpose |
 | :--- | :--- |
 | `raw init` | Initialize RAW (`--hooks` for Claude Code) |
 | `raw create <name>` | Create a workflow (`--tool` for tools) |
 | `raw build <id>` | Build workflow with agentic loop (`--resume`, `--last`) |
-| `raw validate <id>` | Validate workflow structure |
 | `raw run <id>` | Execute a workflow (`--dry` for testing) |
-| `raw list` | List workflows and tools (`-s` to search) |
-| `raw show <id>` | View details (`--logs`, `--context`) |
+| `raw show [id]` | List, inspect, validate (`--validate`, `--logs`) |
 
-Run `raw --help` for options.
+Run `raw --help` for all options.
+
+```bash
+# Navigation
+raw show                    # List all workflows
+raw show tools              # List all tools
+raw show tools -s "fetch"   # Search tools
+
+# Inspection
+raw show my-workflow        # Show details
+raw show my-workflow -v     # Validate structure
+raw show my-workflow -l     # View logs
+```
 
 ### Builder
 
@@ -173,9 +185,9 @@ RAW Platform (Local Runtime)
   └── Manifests (Execution History)
 ```
 
-## Code Philosophy
+## Code Design
 
-Workflows follow five **Agent-Native Code Rules** that ensure robust, testable, observable code resistant to agent hallucinations:
+Workflows follow five **Agent-Native Code Rules**:
 
 1. **Data Contract** - Pydantic models between steps, never raw dicts
 2. **Resilience** - `@retry` on all external interactions
