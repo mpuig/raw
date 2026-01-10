@@ -13,8 +13,10 @@ from pydantic import BaseModel
 from rich.console import Console
 from rich.panel import Panel
 
+from raw_runtime.bus import LocalEventBus
 from raw_runtime.connection import init_connection, set_connection
 from raw_runtime.context import WorkflowContext, set_workflow_context
+from raw_runtime.handlers import JournalEventHandler
 from raw_runtime.protocols.logger import WorkflowLogger
 
 if TYPE_CHECKING:
@@ -149,11 +151,19 @@ class WorkflowEntrypoint:
             Exit code
         """
         workflow_name = workflow_class.__name__
+
+        # Set up event bus and journal for crash recovery
+        event_bus = LocalEventBus()
+        journal_path = Path.cwd() / "events.jsonl"
+        journal_handler = JournalEventHandler(journal_path)
+        event_bus.subscribe(journal_handler)
+
         context = WorkflowContext(
             workflow_id=workflow_name,
             short_name=workflow_name,
             parameters=params.model_dump(),
             workflow_dir=Path.cwd(),
+            event_bus=event_bus,
         )
 
         self.console.print()
@@ -201,6 +211,10 @@ class WorkflowEntrypoint:
             context.finalize(status="failed", error=str(e))
             exit_code = 1
         finally:
+            # Flush and close journal
+            journal_handler.flush()
+            journal_handler.close()
+
             set_workflow_context(None)
             if connection.is_connected:
                 connection.disconnect("success" if exit_code == 0 else "failed")

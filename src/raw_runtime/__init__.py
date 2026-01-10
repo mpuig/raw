@@ -89,7 +89,8 @@ from raw_runtime.events import (
     WorkflowStartedEvent,
     WorkflowTriggeredEvent,
 )
-from raw_runtime.handlers import ConsoleEventHandler
+from raw_runtime.handlers import ConsoleEventHandler, JournalEventHandler
+from raw_runtime.journal import JournalReader, JournalWriter, LocalJournalWriter
 from raw_runtime.manifest import (
     LocalManifestWriter,
     ManifestBuilder,
@@ -212,6 +213,11 @@ __all__ = [
     "ApprovalRegistry",
     # Event handlers
     "ConsoleEventHandler",
+    "JournalEventHandler",
+    # Journal
+    "JournalWriter",
+    "LocalJournalWriter",
+    "JournalReader",
     # Events
     "Event",
     "EventType",

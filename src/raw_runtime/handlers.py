@@ -3,8 +3,11 @@
 Handlers process events emitted by the EventBus. Each handler serves
 a specific purpose:
 - ConsoleEventHandler: Pretty console output for `raw run`
+- JournalEventHandler: Append-only JSONL journal for crash recovery
 - FileEventHandler: JSON logging for `raw serve` (future)
 """
+
+from pathlib import Path
 
 from rich.console import Console
 
@@ -22,6 +25,7 @@ from raw_runtime.events import (
     WorkflowFailedEvent,
     WorkflowStartedEvent,
 )
+from raw_runtime.journal import LocalJournalWriter
 
 
 class ConsoleEventHandler:
@@ -114,3 +118,34 @@ class ConsoleEventHandler:
 
     def _handle_cache_hit(self, event: CacheHitEvent) -> None:
         self.console.print(f"[cyan]💾[/] Using cached result for {event.step_name}")
+
+
+class JournalEventHandler:
+    """Journal event handler for crash recovery and provenance.
+
+    Writes all events to .raw/runs/{run_id}/events.jsonl in real-time
+    with immediate flush for crash safety.
+    """
+
+    def __init__(self, journal_path: Path) -> None:
+        """Initialize journal event handler.
+
+        Args:
+            journal_path: Path to events.jsonl file
+        """
+        self._writer = LocalJournalWriter(journal_path)
+
+    def __call__(self, event: Event) -> None:
+        """Handle an event by writing to journal.
+
+        Events are written immediately with fsync for crash safety.
+        """
+        self._writer.write_event(event)
+
+    def flush(self) -> None:
+        """Flush journal to disk."""
+        self._writer.flush()
+
+    def close(self) -> None:
+        """Close journal file."""
+        self._writer.close()
