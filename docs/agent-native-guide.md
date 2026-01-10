@@ -20,6 +20,31 @@ This guide shows when and how to use each layer.
 - Implementing workflow generators or templates
 - Need to validate or inspect workflows before running
 
+## Checking CLI-to-SDK Parity
+
+RAW maintains parity between CLI commands and SDK functions. Agents can verify this programmatically:
+
+```python
+from raw.sdk import check_parity, print_parity_report
+
+# Get parity statistics
+parity = check_parity()
+print(f"Full parity: {parity['full_parity']}/{parity['total_commands']}")
+print(f"Partial parity: {parity['partial_parity']}")
+print(f"Missing: {parity['missing']}")
+
+# Print detailed report
+print_parity_report()
+```
+
+Current parity status (as of v0.2.0):
+- **14 CLI commands** tracked
+- **6 commands** have full SDK parity (43%)
+- **4 commands** have partial parity (29%)
+- **4 commands** are missing SDK wrappers (29%)
+
+All core CRUD operations for workflows and tools have full parity. See `/Users/puigmarc/code/raw/docs/cli-sdk-parity.md` for complete details.
+
 ## SDK Examples
 
 ### Creating a Workflow
