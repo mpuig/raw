@@ -91,6 +91,11 @@ from raw_runtime.events import (
 )
 from raw_runtime.handlers import ConsoleEventHandler, JournalEventHandler
 from raw_runtime.journal import JournalReader, JournalWriter, LocalJournalWriter
+from raw_runtime.reconcile import (
+    ReconciliationResult,
+    reconcile_run,
+    scan_and_reconcile,
+)
 from raw_runtime.reducer import ManifestReducer
 from raw_runtime.manifest import (
     LocalManifestWriter,
@@ -220,6 +225,10 @@ __all__ = [
     "LocalJournalWriter",
     "JournalReader",
     "ManifestReducer",
+    # Reconciliation
+    "ReconciliationResult",
+    "reconcile_run",
+    "scan_and_reconcile",
     # Events
     "Event",
     "EventType",

@@ -29,6 +29,7 @@ class RunStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    CRASHED = "crashed"  # Process terminated unexpectedly
 
 
 class StepResult(BaseModel):

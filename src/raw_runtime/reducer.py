@@ -311,8 +311,16 @@ class ManifestReducer:
 
     def _handle_workflow_failed(self, event: dict) -> None:
         """Handle workflow.failed event."""
-        self._status = RunStatus.FAILED
-        self._error = event.get("error", "Unknown error")
+        error = event.get("error", "Unknown error")
+
+        # Check if this is a crashed workflow (reconciliation marker)
+        if error.startswith("CRASHED:"):
+            self._status = RunStatus.CRASHED
+            self._error = error[8:].strip()  # Remove "CRASHED: " prefix
+        else:
+            self._status = RunStatus.FAILED
+            self._error = error
+
         self._ended_at = _parse_timestamp(event.get("timestamp"))
 
     def _build_manifest(self) -> Manifest:
