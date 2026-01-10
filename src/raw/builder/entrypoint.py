@@ -5,6 +5,11 @@ from pathlib import Path
 
 from raw.builder.config import load_builder_config, merge_cli_overrides
 from raw.builder.loop import builder_loop
+from raw.builder.resume import (
+    ResumeError,
+    find_build_to_resume,
+    replay_journal_for_resume,
+)
 
 
 def build_workflow(
@@ -45,15 +50,41 @@ def build_workflow(
     # Merge CLI overrides
     config = merge_cli_overrides(config, max_iterations, max_minutes)
 
-    # Handle resume (TODO: implement resume logic in raw-7kx.9)
+    # Handle resume
+    resume_state = None
     if resume or last:
-        print(f"[Builder] Resume functionality not yet implemented")
-        print(f"[Builder] Use: raw build {workflow_id}")
+        try:
+            # Find build to resume
+            build_id_to_resume = find_build_to_resume(build_id=resume, last=last)
+
+            # Replay journal to reconstruct state
+            resume_state = replay_journal_for_resume(build_id_to_resume)
+
+            # Override workflow_id from resumed state if not specified
+            if not workflow_id:
+                workflow_id = resume_state.workflow_id
+
+            # Merge config from resumed build (CLI overrides still apply)
+            from raw.builder.config import BuilderConfig
+
+            resumed_config = BuilderConfig.model_validate(resume_state.config)
+            resumed_config = merge_cli_overrides(resumed_config, max_iterations, max_minutes)
+            config = resumed_config
+
+        except ResumeError as e:
+            print(f"[Builder] Resume error: {e}")
+            return 1
+
+    # Validate workflow_id is present
+    if not workflow_id:
+        print("[Builder] Error: workflow_id required (use: raw build <workflow-id>)")
         return 1
 
     # Run builder loop (async)
     try:
-        result = asyncio.run(builder_loop(workflow_id, intent=None, config=config))
+        result = asyncio.run(
+            builder_loop(workflow_id, intent=None, config=config, resume_state=resume_state)
+        )
         return result.exit_code()
     except ValueError as e:
         print(f"[Builder] Error: {e}")

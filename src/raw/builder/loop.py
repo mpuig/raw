@@ -4,8 +4,12 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from raw.builder.config import BuilderConfig
+
+if TYPE_CHECKING:
+    from raw.builder.resume import ResumeState
 from raw.builder.events import (
     BuildCompletedEvent,
     BuildFailedEvent,
@@ -60,6 +64,7 @@ async def builder_loop(
     workflow_id: str,
     intent: str | None,
     config: BuilderConfig,
+    resume_state: "ResumeState | None" = None,
 ) -> BuildResult:
     """Execute builder loop with plan → execute → verify → iterate cycles.
 
@@ -67,6 +72,7 @@ async def builder_loop(
         workflow_id: Workflow to build
         intent: Optional intent override
         config: Builder configuration
+        resume_state: Optional state from previous build to resume
 
     Returns:
         BuildResult with status and metadata
@@ -79,37 +85,53 @@ async def builder_loop(
     if not workflow_dir:
         raise ValueError(f"Workflow not found: {workflow_id}")
 
-    # Generate build ID
-    build_id = f"build-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+    # Initialize or resume
+    if resume_state:
+        # RESUME: Use state from previous build
+        build_id = resume_state.build_id
+        iteration = resume_state.last_iteration
+        mode = resume_state.current_mode
+        start_time = resume_state.start_timestamp
+        last_failures = resume_state.last_failures
+        doom_loop_counter = resume_state.doom_loop_counter
+        last_gate_results_signature = resume_state.last_gate_results_signature
 
-    # Create journal
-    with BuilderJournal(build_id) as journal:
-        # Emit build started
-        journal.write(
-            BuildStartedEvent(
-                build_id=build_id,
-                iteration=0,
-                workflow_id=workflow_id,
-                intent=intent,
-                config=config.model_dump(),
-            )
-        )
-
-        # Discover skills
-        skills = discover_skills()
-
-        # Initialize state
+        print(f"[Builder] Resuming build: {build_id}")
+        print(f"[Builder] Workflow: {workflow_id}")
+        print(f"[Builder] Last iteration: {iteration}")
+        print(f"[Builder] Current mode: {mode.value}")
+    else:
+        # NEW BUILD: Initialize fresh state
+        build_id = f"build-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
         iteration = 0
         mode = BuildMode.PLAN if config.mode.plan_first else BuildMode.EXECUTE
         start_time = time.time()
-        last_failures: list[str] = []
+        last_failures = []
         doom_loop_counter = 0
-        last_gate_results_signature: str | None = None
+        last_gate_results_signature = None
 
         print(f"[Builder] Starting build: {build_id}")
         print(f"[Builder] Workflow: {workflow_id}")
-        print(f"[Builder] Skills: {len(skills)} discovered")
         print(f"[Builder] Mode: {mode.value}")
+
+    # Discover skills
+    skills = discover_skills()
+    if not resume_state:
+        print(f"[Builder] Skills: {len(skills)} discovered")
+
+    # Create or open journal
+    with BuilderJournal(build_id) as journal:
+        # Emit build started only for new builds
+        if not resume_state:
+            journal.write(
+                BuildStartedEvent(
+                    build_id=build_id,
+                    iteration=0,
+                    workflow_id=workflow_id,
+                    intent=intent,
+                    config=config.model_dump(),
+                )
+            )
 
         # Main loop
         while True:
