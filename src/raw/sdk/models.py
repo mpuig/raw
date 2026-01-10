@@ -30,3 +30,15 @@ class Step(BaseModel):
     description: str
     tool: str
     inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class Tool(BaseModel):
+    """Represents a tool with its metadata."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    name: str
+    description: str
+    version: str = "1.0.0"
+    operations: list[str] = Field(default_factory=list)
+    path: Path
