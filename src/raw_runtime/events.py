@@ -97,6 +97,7 @@ class WorkflowProvenanceEvent(BaseEvent):
     hostname: str | None = None
     working_directory: str | None = None
     config_snapshot: dict[str, Any] = Field(default_factory=dict)
+    resumed_from: str | None = None
 
 
 class WorkflowCompletedEvent(BaseEvent):

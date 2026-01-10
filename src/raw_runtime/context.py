@@ -314,6 +314,7 @@ class WorkflowContext:
             WorkflowProvenanceEvent(
                 workflow_id=self.workflow_id,
                 run_id=self.run_id,
+                resumed_from=self.resumed_from_run_id,
                 **provenance,
             )
         )

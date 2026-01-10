@@ -181,6 +181,7 @@ class ManifestReducer:
             "workflow_hash": event.get("workflow_hash"),
             "tool_versions": event.get("tool_versions", {}),
             "config_snapshot": event.get("config_snapshot", {}),
+            "resumed_from": event.get("resumed_from"),
         }
 
     def _handle_step_started(self, event: dict) -> None:

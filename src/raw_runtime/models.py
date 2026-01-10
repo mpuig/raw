@@ -119,6 +119,7 @@ class ProvenanceInfo(BaseModel):
     config_snapshot: dict[str, Any] = Field(
         default_factory=dict, description="Config at run time (secrets redacted)"
     )
+    resumed_from: str | None = Field(default=None, description="Previous run ID if resumed")
 
 
 class Manifest(BaseModel):
