@@ -23,6 +23,12 @@ Usage:
         MyWorkflow.main()
 """
 
+from raw_runtime.agentic import (
+    AgenticStepError,
+    CostLimitExceededError,
+    ResponseParsingError,
+    agentic,
+)
 from raw_runtime.approval import (
     ApprovalHandler,
     AutoApprovalHandler,
@@ -113,6 +119,7 @@ from raw_runtime.models import (
     RunStatus,
     StepResult,
     StepStatus,
+    ToolMetadata,
     WorkflowInfo,
 )
 from raw_runtime.orchestrator import (
@@ -179,9 +186,14 @@ __all__ = [
     "cache",
     "retry",
     "conditional",
+    "agentic",
     # Decorators (legacy names)
     "raw_step",
     "cache_step",
+    # Agentic errors
+    "AgenticStepError",
+    "CostLimitExceededError",
+    "ResponseParsingError",
     # Context
     "WorkflowContext",
     "get_workflow_context",
@@ -241,6 +253,7 @@ __all__ = [
     "Manifest",
     "EnvironmentInfo",
     "LogsInfo",
+    "ToolMetadata",
     # Environment & Providers
     "load_dotenv",
     "ensure_env_loaded",
