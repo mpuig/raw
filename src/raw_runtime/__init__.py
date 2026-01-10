@@ -91,6 +91,7 @@ from raw_runtime.events import (
 )
 from raw_runtime.handlers import ConsoleEventHandler, JournalEventHandler
 from raw_runtime.journal import JournalReader, JournalWriter, LocalJournalWriter
+from raw_runtime.reducer import ManifestReducer
 from raw_runtime.manifest import (
     LocalManifestWriter,
     ManifestBuilder,
@@ -218,6 +219,7 @@ __all__ = [
     "JournalWriter",
     "LocalJournalWriter",
     "JournalReader",
+    "ManifestReducer",
     # Events
     "Event",
     "EventType",
