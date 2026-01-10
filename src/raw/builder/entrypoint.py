@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from raw.builder.config import load_builder_config, merge_cli_overrides
+
 
 def build_workflow(
     workflow_id: str,
@@ -35,20 +37,27 @@ def build_workflow(
         raw build --resume build-abc123
         raw build --last
     """
+    # Load configuration from .raw/config.yaml
+    config = load_builder_config(Path.cwd())
+
+    # Merge CLI overrides
+    config = merge_cli_overrides(config, max_iterations, max_minutes)
+
     # TODO: Implement builder loop controller
-    # For now, just print a message and return success
+    # For now, just print configuration and return success
     print(f"[Builder] Building workflow: {workflow_id}")
+    print(f"[Builder] Configuration:")
+    print(f"  - Max iterations: {config.budgets.max_iterations}")
+    print(f"  - Max minutes: {config.budgets.max_minutes}")
+    print(f"  - Doom loop threshold: {config.budgets.doom_loop_threshold}")
+    print(f"  - Default gates: {', '.join(config.gates.default)}")
+    print(f"  - Optional gates: {', '.join(config.gates.optional.keys()) if config.gates.optional else 'none'}")
+    print(f"  - Plan first: {config.mode.plan_first}")
 
     if resume:
         print(f"[Builder] Resuming from build: {resume}")
     elif last:
         print("[Builder] Resuming from last build")
-
-    if max_iterations:
-        print(f"[Builder] Max iterations: {max_iterations}")
-
-    if max_minutes:
-        print(f"[Builder] Max minutes: {max_minutes}")
 
     print("[Builder] Skeleton command - full implementation coming soon")
     print("[Builder] Exit code: 0")
