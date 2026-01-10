@@ -95,7 +95,25 @@ class InboundCallWorkflow(BaseWorkflow[CallParams]):
 
     @step("summarize_call")
     async def summarize_call(self, conversation: dict) -> str:
-        """Generate a summary of the call."""
+        """Generate a summary of the call.
+
+        Alternative: Use @agentic decorator for LLM-powered summarization:
+
+        @step("summarize_call")
+        @agentic(
+            prompt='''
+            Summarize this customer support call in 3-4 bullet points:
+            {context.transcript}
+
+            Focus on: issue, resolution, next steps
+            ''',
+            model="claude-3-5-haiku-20241022",
+            max_tokens=200,
+            cost_limit=0.01
+        )
+        def summarize_call(self, transcript: str) -> str:
+            pass  # Implementation injected by decorator
+        """
         self.log("Generating call summary...")
 
         # Join transcript into text

@@ -404,3 +404,127 @@ if __name__ == "__main__":
 **CRITICAL:** Always search before creating. Duplicate tools waste time and create maintenance burden.
 
 **Tools are dependencies, workflows are applications.** Build reusable tools—capabilities built today solve tomorrow's problems.
+
+---
+
+## Agent-Native Architecture
+
+RAW implements agent-native design at two layers:
+
+### Layer 1: Programmatic Workflow Construction
+
+Agents build workflows using the Python SDK instead of only CLI:
+
+```python
+from raw.sdk import create_workflow, add_step
+
+# Agent creates workflow programmatically
+workflow = create_workflow(
+    name="stock-analysis",
+    intent="Fetch Tesla stock data and generate report"
+)
+
+# Add steps
+add_step(workflow, name="fetch", tool="stock_fetcher",
+         config={"ticker": "TSLA"})
+add_step(workflow, name="report", tool="pdf_generator")
+
+# Validate before running
+from raw.validation import WorkflowValidator
+validator = WorkflowValidator()
+result = validator.validate(workflow.directory)
+if result.success:
+    print("✓ Workflow valid")
+```
+
+**SDK Functions:**
+- `create_workflow(name, intent, description)` - Create new workflow
+- `list_workflows()` - List all workflows
+- `get_workflow(id)` - Get workflow by ID
+- `update_workflow(workflow, **kwargs)` - Update metadata
+- `delete_workflow(workflow)` - Delete workflow
+- `add_step(workflow, name, tool, code, config)` - Add step
+
+### Layer 2: Selective Agentic Steps
+
+Use `@agentic` decorator for LLM-powered reasoning in specific steps:
+
+```python
+from typing import Literal
+from raw_runtime import BaseWorkflow, step, agentic
+
+class SupportWorkflow(BaseWorkflow[Params]):
+    @step("extract")
+    def extract_ticket(self):
+        # Deterministic - just reads data
+        return self.params.ticket_data
+
+    @step("classify")
+    @agentic(
+        prompt="""
+        Classify support ticket urgency:
+        Customer: {context.customer_tier}
+        Issue: {context.issue}
+        History: {context.history}
+
+        Return ONLY: critical, high, medium, or low
+        """,
+        model="claude-3-5-haiku-20241022",
+        max_tokens=10,
+        cost_limit=0.01  # Safety limit
+    )
+    def classify_urgency(self, customer_tier: str, issue: str,
+                         history: list) -> Literal["critical", "high", "medium", "low"]:
+        pass  # Implementation injected by decorator
+
+    @step("route")
+    def route_ticket(self, urgency: str):
+        # Deterministic - uses classification result
+        if urgency == "critical":
+            return self.escalate()
+        return self.assign_to_pool(urgency)
+```
+
+**@agentic Parameters:**
+- `prompt` - Template with {context.field} placeholders
+- `model` - Claude model (sonnet/haiku/opus)
+- `max_tokens` - Max response tokens
+- `temperature` - Sampling temperature (0-1)
+- `cost_limit` - Max cost per call (raises if exceeded)
+- `cache` - Enable response caching (default: True)
+- `cache_ttl` - Cache TTL in seconds (default: 7 days)
+
+**Cost Tracking:**
+Agentic steps automatically track:
+- Estimated cost (before API call)
+- Actual cost (from API response)
+- Token usage (input/output)
+- Per-step breakdown in manifest
+
+**Caching:**
+Responses are cached in `.raw/cache/agentic/` by prompt hash.
+Identical prompts skip API calls, saving cost.
+
+### Completion Signals
+
+Use explicit signals instead of exit codes:
+
+```python
+class MyWorkflow(BaseWorkflow[Params]):
+    def run(self):
+        result = self.fetch_data()
+
+        if result is None:
+            return self.error("API returned no data")
+
+        self.save("output.json", result)
+        return self.success("Fetched 42 items", data={"count": 42})
+
+        # Use .complete() for terminal state
+        # return self.complete("Processing finished")
+```
+
+**Signal Types:**
+- `.success(message, data)` - Succeeded, can continue
+- `.error(message)` - Failed, can retry
+- `.complete(message, data)` - Terminal state, stop execution
