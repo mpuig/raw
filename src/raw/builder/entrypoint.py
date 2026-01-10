@@ -1,8 +1,10 @@
 """Builder entrypoint - main entry function for raw build command."""
 
+import asyncio
 from pathlib import Path
 
 from raw.builder.config import load_builder_config, merge_cli_overrides
+from raw.builder.loop import builder_loop
 
 
 def build_workflow(
@@ -43,23 +45,25 @@ def build_workflow(
     # Merge CLI overrides
     config = merge_cli_overrides(config, max_iterations, max_minutes)
 
-    # TODO: Implement builder loop controller
-    # For now, just print configuration and return success
-    print(f"[Builder] Building workflow: {workflow_id}")
-    print(f"[Builder] Configuration:")
-    print(f"  - Max iterations: {config.budgets.max_iterations}")
-    print(f"  - Max minutes: {config.budgets.max_minutes}")
-    print(f"  - Doom loop threshold: {config.budgets.doom_loop_threshold}")
-    print(f"  - Default gates: {', '.join(config.gates.default)}")
-    print(f"  - Optional gates: {', '.join(config.gates.optional.keys()) if config.gates.optional else 'none'}")
-    print(f"  - Plan first: {config.mode.plan_first}")
+    # Handle resume (TODO: implement resume logic in raw-7kx.9)
+    if resume or last:
+        print(f"[Builder] Resume functionality not yet implemented")
+        print(f"[Builder] Use: raw build {workflow_id}")
+        return 1
 
-    if resume:
-        print(f"[Builder] Resuming from build: {resume}")
-    elif last:
-        print("[Builder] Resuming from last build")
+    # Run builder loop (async)
+    try:
+        result = asyncio.run(builder_loop(workflow_id, intent=None, config=config))
+        return result.exit_code()
+    except ValueError as e:
+        print(f"[Builder] Error: {e}")
+        return 1
+    except KeyboardInterrupt:
+        print(f"\n[Builder] Build interrupted by user")
+        return 1
+    except Exception as e:
+        print(f"[Builder] Unexpected error: {e}")
+        import traceback
 
-    print("[Builder] Skeleton command - full implementation coming soon")
-    print("[Builder] Exit code: 0")
-
-    return 0
+        traceback.print_exc()
+        return 1
