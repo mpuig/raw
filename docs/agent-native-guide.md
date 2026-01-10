@@ -43,7 +43,7 @@ Current parity status (as of v0.2.0):
 - **4 commands** have partial parity (29%)
 - **4 commands** are missing SDK wrappers (29%)
 
-All core CRUD operations for workflows and tools have full parity. See `/Users/puigmarc/code/raw/docs/cli-sdk-parity.md` for complete details.
+All core CRUD operations for workflows and tools have full parity. See [cli-sdk-parity.md](cli-sdk-parity.md) for complete details.
 
 ## SDK Examples
 

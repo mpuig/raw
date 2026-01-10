@@ -1,10 +1,13 @@
 """Builder journal - append-only JSONL event log."""
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 from raw.builder.events import BuildEvent, BuildEventType
+
+logger = logging.getLogger(__name__)
 
 
 class BuilderJournal:
@@ -119,7 +122,7 @@ class BuilderJournalReader:
                     events.append(event)
                 except json.JSONDecodeError as e:
                     # Skip corrupt line with warning
-                    print(f"Warning: Corrupt line {line_num} in {self.journal_path}: {e}")
+                    logger.warning("Corrupt line %d in %s: %s", line_num, self.journal_path, e)
                     continue
 
         return events
@@ -182,10 +185,10 @@ class BuilderJournalReader:
                 if event_class:
                     typed_events.append(event_class.model_validate(event_data))
                 else:
-                    print(f"Warning: Unknown event type: {event_type_str}")
+                    logger.warning("Unknown event type: %s", event_type_str)
 
             except ValueError as e:
-                print(f"Warning: Invalid event data: {e}")
+                logger.warning("Invalid event data: %s", e)
                 continue
 
         return typed_events

@@ -200,7 +200,7 @@ Creates `.claude/settings.local.json`:
 
 ---
 
-## The Tools-as-Libraries Architecture
+## Tools-as-Libraries Architecture
 
 RAW's tool architecture is designed for AI agents:
 
@@ -283,6 +283,6 @@ ls .raw/workflows/
 
 ## See Also
 
-- [QUICKSTART.md](QUICKSTART.md) - Get started in 30 seconds
+- [QUICKSTART.md](QUICKSTART.md) - Get started
 - [GUIDE.md](GUIDE.md) - Building workflows
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Event-driven design

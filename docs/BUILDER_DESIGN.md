@@ -16,7 +16,7 @@ The RAW Builder is an agentic system that implements the **plan → execute → 
 4. **Budget Enforcement**: Max iterations, time, and cost limits prevent runaway loops
 5. **Append-Only Journal**: Crash-safe event log for debugging and resume
 
-## Architectural Patterns (Borrowed from References)
+## Architectural Patterns
 
 ### From OpenCode
 

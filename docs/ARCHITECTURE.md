@@ -4,7 +4,7 @@ This document explains RAW's event-driven architecture and the rationale behind 
 
 ---
 
-## Core Concept: Everything is an Event
+## Core Concept: Event-Driven
 
 In RAW's architecture, workflows don't just "run"—they **emit events** and **react to events**.
 
@@ -16,7 +16,7 @@ This turns a script into a conversation between components.
 
 ---
 
-## Core Principle: Decoupled Observability
+## Core Principle: Observability
 
 RAW separates **execution** from **observation**. Workflows emit events for every state change; handlers decide what to do with them. This enables:
 
@@ -690,6 +690,6 @@ count = rebuild_index_from_journals(
 ## See Also
 
 - [../README.md](../README.md) - Project overview
-- [QUICKSTART.md](QUICKSTART.md) - 30-second setup
+- [QUICKSTART.md](QUICKSTART.md) - Setup guide
 - [GUIDE.md](GUIDE.md) - Building workflows
 - [API.md](API.md) - Runtime API reference

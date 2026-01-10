@@ -55,7 +55,7 @@ These commands are exposed via command modules but not in main CLI:
 
 ### Currently Available in SDK
 
-From `/Users/puigmarc/code/raw/src/raw/sdk/workflow.py`:
+From `..src/raw/sdk/workflow.py`:
 
 1. **`create_workflow(name, intent, description=None) -> Workflow`**
    - Creates draft workflow
@@ -82,7 +82,7 @@ From `/Users/puigmarc/code/raw/src/raw/sdk/workflow.py`:
    - Adds step to workflow
    - ✅ No direct CLI equivalent - SDK-only feature
 
-From `/Users/puigmarc/code/raw/src/raw/sdk/tools.py`:
+From `..src/raw/sdk/tools.py`:
 
 7. **`create_tool(name, description, tool_type="function", tools_dir=None) -> Tool`**
    - Creates new tool package
@@ -106,13 +106,13 @@ From `/Users/puigmarc/code/raw/src/raw/sdk/tools.py`:
 
 ### Available in Core but Not SDK
 
-From `/Users/puigmarc/code/raw/src/raw/discovery/search.py`:
+From `..src/raw/discovery/search.py`:
 
 1. **`search_tools(query, project_dir=None) -> list[dict]`**
    - Semantic/TF-IDF tool search
    - Should be exposed in SDK
 
-From `/Users/puigmarc/code/raw/src/raw/discovery/workflow.py`:
+From `..src/raw/discovery/workflow.py`:
 
 2. **`publish_workflow(workflow_dir) -> WorkflowConfig`**
    - Publishes workflow with tool pinning
@@ -122,13 +122,13 @@ From `/Users/puigmarc/code/raw/src/raw/discovery/workflow.py`:
    - Duplicates workflow
    - SDK needs wrapper that accepts ID instead of path
 
-From `/Users/puigmarc/code/raw/src/raw/scaffold/dry_run.py`:
+From `..src/raw/scaffold/dry_run.py`:
 
 4. **`generate_dry_run_template(workflow_dir) -> None`**
    - Generates mock template for dry runs
    - Should be exposed in SDK
 
-From `/Users/puigmarc/code/raw/src/raw/scaffold/init.py`:
+From `..src/raw/scaffold/init.py`:
 
 5. **`get_prime_content() -> str`**
    - Gets agent context
@@ -140,7 +140,7 @@ From `/Users/puigmarc/code/raw/src/raw/scaffold/init.py`:
 
 ### Available in Engine but Not SDK
 
-From `/Users/puigmarc/code/raw/src/raw/engine/container.py`:
+From `..src/raw/engine/container.py`:
 
 1. **`Container.workflow_runner() -> WorkflowRunner`**
    - Gets workflow runner
@@ -290,9 +290,9 @@ All SDK functions should have corresponding tests in `tests/raw_sdk/`:
 
 ## Related Documentation
 
-- `/Users/puigmarc/code/raw/src/raw/sdk/README.md` - SDK usage guide
-- `/Users/puigmarc/code/raw/CLAUDE.md` - RAW development guide
-- `/Users/puigmarc/code/raw/docs/agent-native-guide.md` - Agent-native principles
+- `..src/raw/sdk/README.md` - SDK usage guide
+- `..CLAUDE.md` - RAW development guide
+- `..docs/agent-native-guide.md` - Agent-native principles
 
 ---
 

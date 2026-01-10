@@ -105,7 +105,7 @@ class AsyncEventBus:
         """
         try:
             loop = asyncio.get_running_loop()
-            loop.call_soon(lambda: self._queue.put_now_wait(event))
+            loop.call_soon(lambda: self._queue.put_nowait(event))
         except RuntimeError:
             self._process_sync(event)
 

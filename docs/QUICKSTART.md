@@ -1,6 +1,6 @@
 # RAW Quickstart
 
-Get RAW running in 30 seconds.
+Get RAW running.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ raw list
 ## Run a Workflow
 
 ```bash
-# Test with mocks first (recommended)
+# Test with mocks first
 raw run my-workflow --dry
 
 # Run for real

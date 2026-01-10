@@ -39,7 +39,7 @@ You ask about the state of the system.
 > **Human:** "What workflows do I have? Show me the last run."
 
 **Claude Code (Behind the Scenes):**
-1.  **Action:** Runs `raw list` and `raw status`
+1.  **Action:** Runs `raw show` and `raw show my-workflow --logs`
 2.  **Result:** "You have 2 workflows. Here's the recent execution history..."
 
 ---

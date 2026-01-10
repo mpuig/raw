@@ -1,16 +1,16 @@
 # RAW Guide
 
-Comprehensive guide for building workflows with RAW.
+Guide for building workflows with RAW.
 
-**New to RAW?** Start with [QUICKSTART.md](QUICKSTART.md) for a 30-second setup.
+**New to RAW?** Start with [QUICKSTART.md](QUICKSTART.md).
 
 ---
 
 ## Why RAW?
 
-**The Problem:** AI agents can write code, but that code is ephemeral. Each execution starts fresh—no memory of what worked, no state management, no observability. When something fails at 2 AM, you have no logs, no manifests, no way to debug.
+**Problem:** AI agents can write code, but that code is ephemeral. Each execution starts fresh—no memory of what worked, no state management, no observability. When something fails, you have no logs, no manifests, no way to debug.
 
-**The Solution:** RAW provides the infrastructure layer that makes agent-generated code production-ready:
+**Solution:** RAW provides the infrastructure layer that makes agent-generated code production-ready:
 
 | Without RAW | With RAW |
 |-------------|----------|
@@ -20,7 +20,7 @@ Comprehensive guide for building workflows with RAW.
 | Manual dependency management | PEP 723 inline dependencies |
 | No caching | `@cache_step` for expensive operations |
 
-**The key insight:** RAW separates **intelligence** from **infrastructure**:
+**Insight:** RAW separates **intelligence** from **infrastructure**:
 - **RAW (Platform)** handles deterministic engineering: state, logging, caching, retries, manifests
 - **Agent (Client)** handles probabilistic reasoning: understanding intent, generating code, reacting to errors
 
@@ -118,9 +118,9 @@ For manual context refresh:
 raw show --context   # Output current session context
 ```
 
-**That's it!** Just ask Claude: *"Create a workflow that fetches stock data and generates a report"*
+Ask Claude: *"Create a workflow that fetches stock data and generates a report"*
 
-## Creating Your First Workflow (v0.2.0 Prompt-First)
+## Creating Your First Workflow
 
 ### Step 1: Create a Draft Workflow
 

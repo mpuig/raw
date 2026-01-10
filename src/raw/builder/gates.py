@@ -223,6 +223,9 @@ async def run_gates(
     workflow_id: str,
     config: BuilderConfig,
     workflow_dir: Path | None = None,
+    journal: "BuilderJournal | None" = None,
+    build_id: str | None = None,
+    iteration: int | None = None,
 ) -> list[GateResult]:
     """Run all configured gates for a workflow.
 
@@ -230,6 +233,9 @@ async def run_gates(
         workflow_id: Workflow to validate
         config: Builder configuration with gates
         workflow_dir: Workflow directory (resolved if None)
+        journal: Optional journal for event logging
+        build_id: Build ID (required if journal provided)
+        iteration: Iteration number (required if journal provided)
 
     Returns:
         List of gate results
@@ -264,8 +270,35 @@ async def run_gates(
 
     # Run gates sequentially (could be parallelized in future)
     for gate in gates:
+        # Write started event if journal provided
+        if journal and build_id and iteration is not None:
+            from raw.builder.events import GateStartedEvent
+
+            journal.write(
+                GateStartedEvent(
+                    build_id=build_id,
+                    iteration=iteration,
+                    gate=gate.name,
+                )
+            )
+
         result = await gate.run(workflow_id, workflow_dir)
         results.append(result)
+
+        # Write completed event if journal provided
+        if journal and build_id and iteration is not None:
+            from raw.builder.events import GateCompletedEvent
+
+            journal.write(
+                GateCompletedEvent(
+                    build_id=build_id,
+                    iteration=iteration,
+                    gate=result.gate,
+                    passed=result.passed,
+                    duration_seconds=result.duration_seconds,
+                    output_path=str(save_gate_output(result, journal.build_dir)),
+                )
+            )
 
     return results
 

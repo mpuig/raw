@@ -37,7 +37,7 @@ from raw_runtime.context import WorkflowContext
 from raw_runtime.protocols.logger import WorkflowLogger, get_logger
 
 if TYPE_CHECKING:
-    from raw.validation.signals import WorkflowResult
+    from raw_runtime.signals import WorkflowResult
     from raw_runtime.tools.base import Tool
     from raw_runtime.triggers import TriggerEvent
 
@@ -241,7 +241,7 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         Example:
             return self.success("Fetched 42 items", data={"count": 42})
         """
-        from raw.validation.signals import WorkflowResult
+        from raw_runtime.signals import WorkflowResult
 
         return WorkflowResult.success(message, data)
 
@@ -260,7 +260,7 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         Example:
             return self.error("API rate limit exceeded, retry in 60s")
         """
-        from raw.validation.signals import WorkflowResult
+        from raw_runtime.signals import WorkflowResult
 
         return WorkflowResult.error(message, exit_code)
 
@@ -279,7 +279,7 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         Example:
             return self.complete("All tasks processed", data={"total": 100})
         """
-        from raw.validation.signals import WorkflowResult
+        from raw_runtime.signals import WorkflowResult
 
         return WorkflowResult.complete(message, data)
 

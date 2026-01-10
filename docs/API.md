@@ -486,9 +486,9 @@ if __name__ == "__main__":
 
 ---
 
-## Module Architecture
+### Module Architecture
 
-The `raw_runtime` module uses a **facade pattern** that re-exports from internal packages. This provides a clean, stable public API while allowing internal restructuring.
+The `raw_runtime` module uses a **facade pattern** that re-exports from internal packages. This provides a public API while allowing internal restructuring.
 
 ### Public API (Recommended)
 

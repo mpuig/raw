@@ -4,10 +4,13 @@ Discovers repo-local skills from builder/skills/**/SKILL.md
 Skills use Agent Skills-style frontmatter for metadata.
 """
 
+import logging
 from pathlib import Path
 from typing import NamedTuple
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 class Skill(NamedTuple):
@@ -81,23 +84,23 @@ def discover_skills(skills_dir: Path | None = None) -> list[Skill]:
 
             # Parse frontmatter
             if not content.startswith("---\n"):
-                print(f"Warning: {skill_file} missing frontmatter (---)")
+                logger.warning("%s missing frontmatter (---)", skill_file)
                 continue
 
             parts = content.split("---\n", 2)
             if len(parts) < 3:
-                print(f"Warning: {skill_file} invalid frontmatter format")
+                logger.warning("%s invalid frontmatter format", skill_file)
                 continue
 
             frontmatter = yaml.safe_load(parts[1])
 
             # Validate required fields
             if "name" not in frontmatter:
-                print(f"Warning: {skill_file} missing 'name' in frontmatter")
+                logger.warning("%s missing 'name' in frontmatter", skill_file)
                 continue
 
             if "description" not in frontmatter:
-                print(f"Warning: {skill_file} missing 'description' in frontmatter")
+                logger.warning("%s missing 'description' in frontmatter", skill_file)
                 continue
 
             # Create skill
@@ -110,10 +113,10 @@ def discover_skills(skills_dir: Path | None = None) -> list[Skill]:
             )
 
         except yaml.YAMLError as e:
-            print(f"Warning: {skill_file} has invalid YAML frontmatter: {e}")
+            logger.warning("%s has invalid YAML frontmatter: %s", skill_file, e)
             continue
         except Exception as e:
-            print(f"Warning: Failed to parse {skill_file}: {e}")
+            logger.warning("Failed to parse %s: %s", skill_file, e)
             continue
 
     return skills

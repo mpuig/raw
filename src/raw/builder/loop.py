@@ -1,5 +1,6 @@
 """Builder loop controller - orchestrates plan → execute → verify → iterate cycles."""
 
+import logging
 import time
 import uuid
 from datetime import datetime, timezone
@@ -10,6 +11,8 @@ from raw.builder.config import BuilderConfig
 
 if TYPE_CHECKING:
     from raw.builder.resume import ResumeState
+
+logger = logging.getLogger(__name__)
 from raw.builder.events import (
     BuildCompletedEvent,
     BuildFailedEvent,
@@ -96,10 +99,10 @@ async def builder_loop(
         doom_loop_counter = resume_state.doom_loop_counter
         last_gate_results_signature = resume_state.last_gate_results_signature
 
-        print(f"[Builder] Resuming build: {build_id}")
-        print(f"[Builder] Workflow: {workflow_id}")
-        print(f"[Builder] Last iteration: {iteration}")
-        print(f"[Builder] Current mode: {mode.value}")
+        logger.info("Resuming build: %s", build_id)
+        logger.info("Workflow: %s", workflow_id)
+        logger.info("Last iteration: %d", iteration)
+        logger.info("Current mode: %s", mode.value)
     else:
         # NEW BUILD: Initialize fresh state
         build_id = f"build-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
@@ -110,14 +113,14 @@ async def builder_loop(
         doom_loop_counter = 0
         last_gate_results_signature = None
 
-        print(f"[Builder] Starting build: {build_id}")
-        print(f"[Builder] Workflow: {workflow_id}")
-        print(f"[Builder] Mode: {mode.value}")
+        logger.info("Starting build: %s", build_id)
+        logger.info("Workflow: %s", workflow_id)
+        logger.info("Mode: %s", mode.value)
 
     # Discover skills
     skills = discover_skills()
     if not resume_state:
-        print(f"[Builder] Skills: {len(skills)} discovered")
+        logger.info("Skills: %d discovered", len(skills))
 
     # Create or open journal
     with BuilderJournal(build_id) as journal:
@@ -160,6 +163,7 @@ async def builder_loop(
                 )
 
             # Start iteration
+            iteration_start = time.time()
             journal.write(
                 IterationStartedEvent(
                     build_id=build_id,
@@ -168,7 +172,7 @@ async def builder_loop(
                 )
             )
 
-            print(f"\n[Builder] Iteration {iteration} ({mode.value} mode)")
+            logger.info("Iteration %d (%s mode)", iteration, mode.value)
 
             if mode == BuildMode.PLAN:
                 # PLAN MODE: Generate numbered plan with gates
@@ -211,35 +215,21 @@ async def builder_loop(
                     )
 
                 # VERIFY: Run quality gates
-                print(f"[Builder] Running quality gates...")
+                logger.info("Running quality gates...")
 
-                gate_results = await run_gates(workflow_id, config, workflow_dir)
+                gate_results = await run_gates(
+                    workflow_id,
+                    config,
+                    workflow_dir,
+                    journal=journal,
+                    build_id=build_id,
+                    iteration=iteration,
+                )
 
-                # Save gate outputs
+                # Log gate results
                 for result in gate_results:
-                    journal.write(
-                        GateStartedEvent(
-                            build_id=build_id,
-                            iteration=iteration,
-                            gate=result.gate,
-                        )
-                    )
-
-                    log_path = save_gate_output(result, journal.build_dir)
-
-                    journal.write(
-                        GateCompletedEvent(
-                            build_id=build_id,
-                            iteration=iteration,
-                            gate=result.gate,
-                            passed=result.passed,
-                            duration_seconds=result.duration_seconds,
-                            output_path=str(log_path),
-                        )
-                    )
-
-                    status = "✓ PASS" if result.passed else "✗ FAIL"
-                    print(f"  {status} {result.gate} ({result.duration_seconds:.2f}s)")
+                    status = "PASS" if result.passed else "FAIL"
+                    logger.info("Gate %s: %s (%.2fs)", result.gate, status, result.duration_seconds)
 
                 # Check if all gates passed
                 all_passed = all(r.passed for r in gate_results)
@@ -256,10 +246,10 @@ async def builder_loop(
                         )
                     )
 
-                    print(f"\n[Builder] ✓ Build completed successfully!")
-                    print(f"[Builder] Iterations: {iteration}")
-                    print(f"[Builder] Duration: {duration:.1f}s")
-                    print(f"[Builder] Build ID: {build_id}")
+                    logger.info("Build completed successfully")
+                    logger.info("Iterations: %d", iteration)
+                    logger.info("Duration: %.1fs", duration)
+                    logger.info("Build ID: %s", build_id)
 
                     return BuildResult("success", build_id, iteration)
 
@@ -300,11 +290,11 @@ async def builder_loop(
                     )
                 )
 
-                print(f"[Builder] {failures}")
-                print(f"[Builder] Switching to plan mode for iteration {iteration + 1}")
+                logger.warning("Gates failed: %s", failures)
+                logger.info("Switching to plan mode for iteration %d", iteration + 1)
 
             # Complete iteration
-            iteration_duration = time.time() - start_time
+            iteration_duration = time.time() - iteration_start
             journal.write(
                 IterationCompletedEvent(
                     build_id=build_id,
@@ -365,7 +355,7 @@ Follow standard workflow pattern.
         )
     )
 
-    print(f"[Builder] Plan generated")
+    logger.info("Plan generated")
     return plan
 
 
@@ -390,7 +380,7 @@ async def _run_execute_mode(
     """
     # TODO: Implement LLM integration
     # For now, assume execution succeeds
-    print(f"[Builder] Executing plan...")
+    logger.info("Executing plan...")
     return True
 
 
@@ -412,14 +402,14 @@ def _finish_stuck(
         )
     )
 
-    print(f"\n[Builder] ⚠ Build stuck: {message}")
-    print(f"[Builder] Reason: {reason}")
-    print(f"[Builder] Build ID: {build_id}")
+    logger.warning("Build stuck: %s", message)
+    logger.warning("Reason: %s", reason)
+    logger.info("Build ID: %s", build_id)
 
     if last_failures:
-        print(f"[Builder] Recent failures:")
+        logger.warning("Recent failures:")
         for failure in last_failures[-3:]:
-            print(f"  • {failure}")
+            logger.warning("  - %s", failure)
 
     return BuildResult("stuck", build_id, iteration, message)
 
@@ -440,7 +430,7 @@ def _finish_failed(
         )
     )
 
-    print(f"\n[Builder] ✗ Build failed: {error}")
-    print(f"[Builder] Build ID: {build_id}")
+    logger.error("Build failed: %s", error)
+    logger.info("Build ID: %s", build_id)
 
     return BuildResult("failed", build_id, iteration, error)
