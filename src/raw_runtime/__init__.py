@@ -110,6 +110,12 @@ from raw_runtime.resume import (
     configure_context_for_resume,
     prepare_resume_state,
 )
+from raw_runtime.index import (
+    RunIndexEntry,
+    RunIndexReader,
+    RunIndexWriter,
+    rebuild_index_from_journals,
+)
 from raw_runtime.manifest import (
     LocalManifestWriter,
     ManifestBuilder,
@@ -246,6 +252,11 @@ __all__ = [
     # Resume
     "prepare_resume_state",
     "configure_context_for_resume",
+    # Index
+    "RunIndexEntry",
+    "RunIndexReader",
+    "RunIndexWriter",
+    "rebuild_index_from_journals",
     # Provenance
     "capture_provenance",
     "get_git_info",
