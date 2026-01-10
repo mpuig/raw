@@ -101,6 +101,14 @@ class WorkflowContext:
         self._steps: list[StepResult] = []
         self._artifacts: list[Artifact] = []
 
+        # Cache metrics for agentic steps
+        self.agentic_cache_hits: int = 0
+        self.agentic_cache_misses: int = 0
+
+        # Cost tracking for agentic steps
+        self.agentic_costs: list[dict[str, Any]] = []
+        self.total_agentic_cost: float = 0.0
+
         self._manifest_builder = ManifestBuilder(
             workflow_id=workflow_id,
             short_name=short_name,
@@ -169,6 +177,44 @@ class WorkflowContext:
     def get_artifacts(self) -> list[Artifact]:
         """Get all recorded artifacts."""
         return self._artifacts.copy()
+
+    def log_cache_hit(self) -> None:
+        """Log an agentic cache hit."""
+        self.agentic_cache_hits += 1
+
+    def log_cache_miss(self) -> None:
+        """Log an agentic cache miss."""
+        self.agentic_cache_misses += 1
+
+    def log_agentic_step(
+        self,
+        step_name: str,
+        cost: float,
+        tokens: dict[str, int],
+        model: str,
+        prompt: str | None = None,
+    ) -> None:
+        """Log cost and token usage for an agentic step.
+
+        Args:
+            step_name: Name of the agentic step
+            cost: Cost in USD
+            tokens: Dictionary with 'input' and 'output' token counts
+            model: Model identifier
+            prompt: Optional prompt text (first 100 chars stored)
+        """
+        step_data: dict[str, Any] = {
+            "step_name": step_name,
+            "cost": cost,
+            "tokens": tokens,
+            "model": model,
+        }
+
+        if prompt:
+            step_data["prompt_preview"] = prompt[:100]
+
+        self.agentic_costs.append(step_data)
+        self.total_agentic_cost += cost
 
     def build_manifest(
         self,

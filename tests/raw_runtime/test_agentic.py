@@ -10,12 +10,11 @@ from raw_runtime import WorkflowContext, set_workflow_context
 from raw_runtime.agentic import (
     AgenticStepError,
     CostLimitExceededError,
-    ResponseParsingError,
     _format_prompt,
     _generate_cache_key,
-    _parse_response,
     agentic,
 )
+from raw_runtime.agentic_parser import ResponseParsingError, parse_response
 
 
 class TestPromptFormatting:
@@ -77,49 +76,49 @@ class TestResponseParsing:
 
     def test_parse_str(self) -> None:
         """Test parsing string response."""
-        result = _parse_response("hello world", str)
+        result = parse_response("hello world", str)
         assert result == "hello world"
 
     def test_parse_int(self) -> None:
         """Test parsing integer response."""
-        result = _parse_response("42", int)
+        result = parse_response("42", int)
         assert result == 42
 
     def test_parse_int_invalid(self) -> None:
         """Test parsing invalid integer raises error."""
         with pytest.raises(ResponseParsingError) as exc_info:
-            _parse_response("not a number", int)
+            parse_response("not a number", int)
         assert "int" in str(exc_info.value)
 
     def test_parse_bool_true(self) -> None:
         """Test parsing boolean true values."""
-        assert _parse_response("true", bool) is True
-        assert _parse_response("True", bool) is True
-        assert _parse_response("yes", bool) is True
-        assert _parse_response("1", bool) is True
+        assert parse_response("true", bool) is True
+        assert parse_response("True", bool) is True
+        assert parse_response("yes", bool) is True
+        assert parse_response("1", bool) is True
 
     def test_parse_bool_false(self) -> None:
         """Test parsing boolean false values."""
-        assert _parse_response("false", bool) is False
-        assert _parse_response("False", bool) is False
-        assert _parse_response("no", bool) is False
-        assert _parse_response("0", bool) is False
+        assert parse_response("false", bool) is False
+        assert parse_response("False", bool) is False
+        assert parse_response("no", bool) is False
+        assert parse_response("0", bool) is False
 
     def test_parse_bool_invalid(self) -> None:
         """Test parsing invalid boolean raises error."""
         with pytest.raises(ResponseParsingError) as exc_info:
-            _parse_response("maybe", bool)
+            parse_response("maybe", bool)
         assert "bool" in str(exc_info.value)
 
     def test_parse_literal(self) -> None:
         """Test parsing Literal type."""
-        result = _parse_response("high", Literal["critical", "high", "medium", "low"])
+        result = parse_response("high", Literal["critical", "high", "medium", "low"])
         assert result == "high"
 
     def test_parse_literal_invalid(self) -> None:
         """Test parsing invalid Literal value raises error."""
         with pytest.raises(ResponseParsingError) as exc_info:
-            _parse_response("invalid", Literal["critical", "high", "medium", "low"])
+            parse_response("invalid", Literal["critical", "high", "medium", "low"])
         assert "not in allowed values" in str(exc_info.value)
 
     def test_parse_pydantic_model(self) -> None:
@@ -129,7 +128,7 @@ class TestResponseParsing:
             status: str
             count: int
 
-        result = _parse_response('{"status": "ok", "count": 5}', Response)
+        result = parse_response('{"status": "ok", "count": 5}', Response)
         assert isinstance(result, Response)
         assert result.status == "ok"
         assert result.count == 5
@@ -142,27 +141,27 @@ class TestResponseParsing:
             count: int
 
         with pytest.raises(ResponseParsingError):
-            _parse_response("not json", Response)
+            parse_response("not json", Response)
 
     def test_parse_list(self) -> None:
         """Test parsing list from JSON."""
-        result = _parse_response('["a", "b", "c"]', list[str])
+        result = parse_response('["a", "b", "c"]', list[str])
         assert result == ["a", "b", "c"]
 
     def test_parse_list_invalid(self) -> None:
         """Test parsing invalid list raises error."""
         with pytest.raises(ResponseParsingError):
-            _parse_response("not a list", list[str])
+            parse_response("not a list", list[str])
 
     def test_parse_dict(self) -> None:
         """Test parsing dict from JSON."""
-        result = _parse_response('{"key": "value"}', dict)
+        result = parse_response('{"key": "value"}', dict)
         assert result == {"key": "value"}
 
     def test_parse_dict_invalid(self) -> None:
         """Test parsing invalid dict raises error."""
         with pytest.raises(ResponseParsingError):
-            _parse_response("not a dict", dict)
+            parse_response("not a dict", dict)
 
 
 class TestCacheKey:
@@ -192,10 +191,10 @@ class TestAgenticDecorator:
         )
         set_workflow_context(self.ctx)
 
-        # Clear cache between tests
-        from raw_runtime.agentic import _cache
+        # Reset global cache between tests
+        from raw_runtime import agentic
 
-        _cache.clear()
+        agentic._cache = None
 
     def teardown_method(self) -> None:
         """Clean up test context."""
@@ -379,15 +378,19 @@ class TestAgenticDecorator:
             @agentic(
                 prompt="Process: {context.text}",
                 model="claude-3-5-sonnet-20241022",
+                max_tokens=4096,
                 cost_limit=0.001,  # Very low limit
             )
             def process(text: str) -> str:
                 pass
 
             with pytest.raises(CostLimitExceededError) as exc_info:
-                process("test")
+                process("test " * 1000)  # Long input to trigger estimation
 
-            assert exc_info.value.actual_cost > exc_info.value.limit
+            # Error should have estimated_cost and cost_limit fields
+            assert exc_info.value.estimated_cost > exc_info.value.cost_limit
+            # API should NOT have been called
+            mock_client.messages.create.assert_not_called()
 
     def test_caching_enabled(self) -> None:
         """Test that caching works when enabled."""
@@ -466,6 +469,7 @@ class TestAgenticDecorator:
             @agentic(
                 prompt="Process: {context.text}",
                 model="claude-3-5-haiku-20241022",
+                cache=False,  # Disable cache to avoid cache miss events
             )
             def process(text: str) -> str:
                 pass
@@ -514,6 +518,7 @@ class TestAgenticDecorator:
             @agentic(
                 prompt="Process: {context.text}",
                 model="claude-3-5-haiku-20241022",
+                cache=False,  # Disable cache
             )
             def process(text: str) -> str:
                 pass
@@ -529,6 +534,7 @@ class TestAgenticDecorator:
             @agentic(
                 prompt="Process: {context.text}",
                 model="claude-3-5-haiku-20241022",
+                cache=False,  # Disable cache to avoid cache lookup
             )
             def process(text: str) -> str:
                 pass
@@ -542,11 +548,13 @@ class TestErrorClasses:
 
     def test_cost_limit_exceeded_error(self) -> None:
         """Test CostLimitExceededError attributes."""
-        error = CostLimitExceededError(actual_cost=0.05, limit=0.01)
-        assert error.actual_cost == 0.05
-        assert error.limit == 0.01
+        error = CostLimitExceededError(estimated_cost=0.05, cost_limit=0.01, step_name="test_step")
+        assert error.estimated_cost == 0.05
+        assert error.cost_limit == 0.01
+        assert error.step_name == "test_step"
         assert "$0.0500" in str(error)
         assert "$0.0100" in str(error)
+        assert "test_step" in str(error)
 
     def test_response_parsing_error(self) -> None:
         """Test ResponseParsingError attributes."""

@@ -7,18 +7,22 @@ Claude for decision-making while maintaining deterministic execution elsewhere.
 import functools
 import hashlib
 import inspect
-import json
 from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Literal, ParamSpec, TypeVar, get_args, get_origin, get_type_hints
+from pathlib import Path
+from typing import Any, ParamSpec, TypeVar, get_type_hints
 
 from pydantic import BaseModel
 
+from raw_runtime.agentic_cache import AgenticCache
+from raw_runtime.agentic_parser import ResponseParsingError, parse_response
 from raw_runtime.context import get_workflow_context
-from raw_runtime.events import StepCompletedEvent, StepStartedEvent
+from raw_runtime.events import CacheHitEvent, CacheMissEvent, StepCompletedEvent, StepStartedEvent
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+__all__ = ["agentic", "AgenticStepError", "CostLimitExceededError", "ResponseParsingError"]
 
 
 class AgenticStepError(Exception):
@@ -30,24 +34,40 @@ class AgenticStepError(Exception):
 class CostLimitExceededError(AgenticStepError):
     """Raised when cost limit is exceeded."""
 
-    def __init__(self, actual_cost: float, limit: float) -> None:
-        self.actual_cost = actual_cost
-        self.limit = limit
-        super().__init__(f"Cost ${actual_cost:.4f} exceeds limit ${limit:.4f}")
+    def __init__(
+        self,
+        estimated_cost: float,
+        cost_limit: float,
+        step_name: str | None = None,
+    ) -> None:
+        self.estimated_cost = estimated_cost
+        self.cost_limit = cost_limit
+        self.step_name = step_name
+        msg = f"Estimated ${estimated_cost:.4f} would exceed limit ${cost_limit:.4f}"
+        if step_name:
+            msg = f"Step '{step_name}': {msg}"
+        super().__init__(msg)
 
 
-class ResponseParsingError(AgenticStepError):
-    """Raised when response cannot be parsed to expected type."""
 
-    def __init__(self, response: str, expected_type: str, error: str) -> None:
-        self.response = response
-        self.expected_type = expected_type
-        self.error = error
-        super().__init__(f"Failed to parse response to {expected_type}: {error}")
+# Global file-based cache (initialized lazily)
+_cache: AgenticCache | None = None
 
 
-# In-memory cache for prompt responses (will be enhanced with file persistence)
-_cache: dict[str, Any] = {}
+def _get_cache(ttl_seconds: int = 604800) -> AgenticCache:
+    """Get or create the global cache instance."""
+    global _cache
+    if _cache is None:
+        # Use .raw/cache/agentic/ if available, otherwise temp directory
+        cache_dir = Path(".raw/cache/agentic")
+        if not cache_dir.parent.parent.exists():
+            # Not in a RAW project, use temp
+            import tempfile
+
+            cache_dir = Path(tempfile.gettempdir()) / "raw_cache" / "agentic"
+
+        _cache = AgenticCache(cache_dir=cache_dir, ttl_seconds=ttl_seconds)
+    return _cache
 
 
 def _generate_cache_key(prompt: str, model: str) -> str:
@@ -89,91 +109,18 @@ def _format_prompt(
         raise ValueError(f"Failed to format prompt template: {e}") from e
 
 
-def _parse_response(response_text: str, return_type: Any) -> Any:
-    """Parse LLM response to expected return type."""
-    response_text = response_text.strip()
-
-    # Get the origin type for generics (e.g., list from list[str])
-    origin = get_origin(return_type)
-
-    # Handle None/NoneType
-    if return_type is None or return_type is type(None):
-        return None
-
-    # Handle str
-    if return_type is str:
-        return response_text
-
-    # Handle int
-    if return_type is int:
-        try:
-            return int(response_text)
-        except ValueError as e:
-            raise ResponseParsingError(response_text, "int", str(e)) from e
-
-    # Handle bool
-    if return_type is bool:
-        lower = response_text.lower()
-        if lower in ("true", "yes", "1"):
-            return True
-        elif lower in ("false", "no", "0"):
-            return False
-        raise ResponseParsingError(response_text, "bool", f"Invalid boolean: {response_text}")
-
-    # Handle Literal types
-    if get_origin(return_type) is Literal:
-        allowed_values = get_args(return_type)
-        if response_text in allowed_values:
-            return response_text
-        raise ResponseParsingError(
-            response_text,
-            f"Literal{allowed_values}",
-            f"Response '{response_text}' not in allowed values",
-        )
-
-    # Handle Pydantic models
-    if isinstance(return_type, type) and issubclass(return_type, BaseModel):
-        try:
-            # Try to parse as JSON
-            data = json.loads(response_text)
-            return return_type.model_validate(data)
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ResponseParsingError(response_text, return_type.__name__, str(e)) from e
-
-    # Handle list
-    if origin is list or return_type is list:
-        try:
-            data = json.loads(response_text)
-            if not isinstance(data, list):
-                raise ValueError("Response is not a list")
-            return data
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ResponseParsingError(response_text, "list", str(e)) from e
-
-    # Handle dict
-    if origin is dict or return_type is dict:
-        try:
-            data = json.loads(response_text)
-            if not isinstance(data, dict):
-                raise ValueError("Response is not a dict")
-            return data
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ResponseParsingError(response_text, "dict", str(e)) from e
-
-    # Default: return as string
-    return response_text
-
 
 def _call_anthropic(
     prompt: str,
     model: str,
     max_tokens: int,
     temperature: float,
-) -> tuple[str, float]:
-    """Call Anthropic API and return response text and cost.
+) -> tuple[str, float, dict[str, int]]:
+    """Call Anthropic API and return response text, cost, and token counts.
 
     Returns:
-        Tuple of (response_text, cost_in_usd)
+        Tuple of (response_text, cost_in_usd, token_counts)
+        where token_counts is {"input": int, "output": int}
     """
     try:
         from anthropic import Anthropic
@@ -181,6 +128,8 @@ def _call_anthropic(
         raise AgenticStepError(
             "anthropic library not installed. Install with: pip install anthropic"
         ) from e
+
+    from raw_runtime.agentic_cost import calculate_cost
 
     client = Anthropic()  # Uses ANTHROPIC_API_KEY from environment
 
@@ -205,21 +154,15 @@ def _call_anthropic(
         if hasattr(block, "text"):
             response_text += block.text
 
-    # Calculate cost (simplified - using approximate pricing)
-    # Claude 3.5 Sonnet: $3/MTok input, $15/MTok output
-    # Claude 3.5 Haiku: $0.25/MTok input, $1.25/MTok output
+    # Get token counts
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
+    tokens = {"input": input_tokens, "output": output_tokens}
 
-    if "haiku" in model.lower():
-        cost = (input_tokens * 0.25 + output_tokens * 1.25) / 1_000_000
-    elif "sonnet" in model.lower():
-        cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
-    else:
-        # Default to Sonnet pricing
-        cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
+    # Calculate cost using centralized pricing
+    cost = calculate_cost(input_tokens, output_tokens, model)
 
-    return response_text, cost
+    return response_text, cost, tokens
 
 
 def agentic(
@@ -229,6 +172,7 @@ def agentic(
     temperature: float = 1.0,
     cost_limit: float | None = None,
     cache: bool = True,
+    cache_ttl: int = 604800,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Make a workflow step invoke Claude for reasoning.
 
@@ -242,6 +186,7 @@ def agentic(
         temperature: Sampling temperature 0-1 (default: 1.0)
         cost_limit: Maximum cost in USD, raises CostLimitExceededError if exceeded
         cache: Enable prompt-based caching (default: True)
+        cache_ttl: Cache TTL in seconds (default: 604800 = 7 days)
 
     Usage:
         @step("classify")
@@ -272,8 +217,21 @@ def agentic(
             # Check cache if enabled
             if cache:
                 cache_key = _generate_cache_key(formatted_prompt, model)
-                if cache_key in _cache:
-                    cached_result = _cache[cache_key]
+                cache_instance = _get_cache(cache_ttl)
+                cached_result = cache_instance.get(cache_key)
+
+                if cached_result is not None:
+                    # Log cache hit
+                    if context:
+                        context.log_cache_hit()
+                        context.emit(
+                            CacheHitEvent(
+                                workflow_id=context.workflow_id,
+                                run_id=context.run_id,
+                                step_name=step_name,
+                                cache_key=cache_key,
+                            )
+                        )
 
                     # Emit events for cached result
                     if context:
@@ -299,6 +257,18 @@ def agentic(
 
                     return cached_result  # type: ignore[return-value]
 
+                # Cache miss
+                if context:
+                    context.log_cache_miss()
+                    context.emit(
+                        CacheMissEvent(
+                            workflow_id=context.workflow_id,
+                            run_id=context.run_id,
+                            step_name=step_name,
+                            cache_key=cache_key,
+                        )
+                    )
+
             # Emit step started event
             if context:
                 context.emit(
@@ -311,28 +281,41 @@ def agentic(
                     )
                 )
 
+            # Estimate cost before API call if cost limit is set
+            if cost_limit is not None:
+                from raw_runtime.agentic_cost import estimate_cost
+
+                try:
+                    estimated = estimate_cost(formatted_prompt, max_tokens, model)
+                    if estimated > cost_limit:
+                        raise CostLimitExceededError(estimated, cost_limit, step_name)
+                except ImportError:
+                    # tiktoken not available, skip estimation
+                    pass
+
             # Call Anthropic API
-            response_text, cost = _call_anthropic(
+            response_text, cost, tokens = _call_anthropic(
                 formatted_prompt,
                 model,
                 max_tokens,
                 temperature,
             )
 
-            # Check cost limit
-            if cost_limit is not None and cost > cost_limit:
-                raise CostLimitExceededError(cost, cost_limit)
+            # Log cost to context
+            if context:
+                context.log_agentic_step(step_name, cost, tokens, model, formatted_prompt)
 
             # Parse response to expected type
             try:
-                result = _parse_response(response_text, return_type)
+                result = parse_response(response_text, return_type)
             except ResponseParsingError:
                 raise
 
             # Cache result if enabled
             if cache:
                 cache_key = _generate_cache_key(formatted_prompt, model)
-                _cache[cache_key] = result
+                cache_instance = _get_cache(cache_ttl)
+                cache_instance.put(cache_key, formatted_prompt, model, result, cost)
 
             # Emit step completed event
             ended_at = datetime.now(timezone.utc)
