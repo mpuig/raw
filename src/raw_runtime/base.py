@@ -37,6 +37,7 @@ from raw_runtime.context import WorkflowContext
 from raw_runtime.protocols.logger import WorkflowLogger, get_logger
 
 if TYPE_CHECKING:
+    from raw.validation.signals import WorkflowResult
     from raw_runtime.tools.base import Tool
     from raw_runtime.triggers import TriggerEvent
 
@@ -121,6 +122,9 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
         Tools provide access to reusable actions (email, SMS, HTTP, etc.)
         with a uniform async interface.
 
+        If the tool is not found in the registry, automatically attempts
+        to discover and register tools from the tools/ directory.
+
         Args:
             name: Tool name (e.g., "email", "sms", "http", "converse")
 
@@ -128,7 +132,7 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
             The tool instance
 
         Raises:
-            KeyError: If the tool is not registered
+            KeyError: If the tool is not registered and cannot be discovered
 
         Usage:
             # Simple request/response
@@ -139,9 +143,33 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
                 if event.type == "message":
                     self.log(event.data["text"])
         """
-        from raw_runtime.tools.registry import get_tool
+        from pathlib import Path
 
-        return get_tool(name)
+        from raw_runtime.tools.registry import get_tool_registry
+
+        registry = get_tool_registry()
+
+        # Try to get the tool
+        tool = registry.get(name)
+        if tool is not None:
+            return tool
+
+        # Tool not found - attempt discovery from tools/ directory
+        tools_dir = Path.cwd() / "tools"
+        if tools_dir.exists():
+            discovered_count = registry.discover_and_register(tools_dir)
+
+            # Try again after discovery
+            tool = registry.get(name)
+            if tool is not None:
+                return tool
+
+        # Still not found - raise helpful error
+        available = ", ".join(sorted(registry.list_all())) or "(none)"
+        raise KeyError(
+            f"Tool '{name}' not found. Available: {available}\n"
+            f"Hint: Create the tool in tools/{name}/ with tool.py or __init__.py"
+        )
 
     @abstractmethod
     def run(self) -> int:
@@ -197,6 +225,63 @@ class BaseWorkflow(ABC, Generic[ParamsT]):
 
         with open(self.log_file, "a") as f:
             f.write(log_entry)
+
+    def success(self, message: str, data: Any = None) -> "WorkflowResult":
+        """Create a success completion signal.
+
+        Indicates the workflow completed successfully and execution can continue.
+
+        Args:
+            message: Description of what succeeded
+            data: Optional result data
+
+        Returns:
+            WorkflowResult with SUCCESS signal
+
+        Example:
+            return self.success("Fetched 42 items", data={"count": 42})
+        """
+        from raw.validation.signals import WorkflowResult
+
+        return WorkflowResult.success(message, data)
+
+    def error(self, message: str, exit_code: int = 1) -> "WorkflowResult":
+        """Create an error completion signal.
+
+        Indicates the workflow failed but can be retried with different inputs.
+
+        Args:
+            message: Description of what failed
+            exit_code: Non-zero exit code for legacy compatibility
+
+        Returns:
+            WorkflowResult with ERROR signal
+
+        Example:
+            return self.error("API rate limit exceeded, retry in 60s")
+        """
+        from raw.validation.signals import WorkflowResult
+
+        return WorkflowResult.error(message, exit_code)
+
+    def complete(self, message: str, data: Any = None) -> "WorkflowResult":
+        """Create a complete completion signal.
+
+        Indicates the workflow has fully completed and no further execution is needed.
+
+        Args:
+            message: Description of completion
+            data: Optional final result data
+
+        Returns:
+            WorkflowResult with COMPLETE signal
+
+        Example:
+            return self.complete("All tasks processed", data={"total": 100})
+        """
+        from raw.validation.signals import WorkflowResult
+
+        return WorkflowResult.complete(message, data)
 
     @classmethod
     def _get_params_class(cls) -> type[BaseModel]:

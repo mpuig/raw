@@ -4,7 +4,13 @@ Manages tool registration and lookup. Supports both global (pre-defined)
 and workflow-local (programmatic) tools.
 """
 
+import logging
+from pathlib import Path
+
+from raw_runtime.models import ToolMetadata
 from raw_runtime.tools.base import Tool
+
+logger = logging.getLogger(__name__)
 
 
 class ToolRegistry:
@@ -39,6 +45,70 @@ class ToolRegistry:
     def list_by_trigger(self, trigger: str) -> list[Tool]:
         """List tools that can handle a given trigger."""
         return [tool for tool in self._tools.values() if trigger in tool.triggers]
+
+    def list_tools(self) -> list[str]:
+        """List all registered tool names for introspection."""
+        return sorted(self._tools.keys())
+
+    def has_tool(self, name: str) -> bool:
+        """Check if a tool is registered."""
+        return name in self._tools
+
+    def get_tool_metadata(self, name: str) -> ToolMetadata:
+        """Get comprehensive metadata about a tool.
+
+        Args:
+            name: Tool name to introspect.
+
+        Returns:
+            ToolMetadata with tool capabilities, parameters, and documentation.
+
+        Raises:
+            KeyError: If tool is not found.
+        """
+        tool = self.require(name)
+        return tool.__class__.metadata()
+
+    def discover_and_register(self, tools_dir: Path) -> int:
+        """Discover tools in directory and register them.
+
+        Scans the tools directory for valid tool packages and registers
+        any discovered tools automatically.
+
+        Args:
+            tools_dir: Path to tools directory to scan
+
+        Returns:
+            Number of tools registered
+
+        Example:
+            registry = ToolRegistry()
+            count = registry.discover_and_register(Path("tools"))
+            print(f"Registered {count} tools")
+        """
+        from raw_runtime.tools.discovery import discover_tools
+
+        discovered = discover_tools(tools_dir)
+        count = 0
+
+        for tool_name, tool_cls in discovered.items():
+            try:
+                # Instantiate if it's a class
+                if isinstance(tool_cls, type):
+                    tool_instance = tool_cls()
+                else:
+                    # Already an instance (from @tool decorator)
+                    tool_instance = tool_cls
+
+                self.register(tool_instance)
+                count += 1
+                logger.info(f"Registered tool: {tool_name}")
+
+            except Exception as e:
+                logger.warning(f"Failed to register tool {tool_name}: {e}")
+                continue
+
+        return count
 
 
 # Global registry for pre-defined tools
