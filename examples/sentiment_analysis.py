@@ -52,7 +52,7 @@ class SentimentWorkflow(BaseWorkflow[SentimentParams]):
     def run(self) -> int:
         result = self.analyze_sentiment(self.params.text)
 
-        self.console.print(f"\n[bold]Sentiment Analysis[/bold]")
+        self.console.print("\n[bold]Sentiment Analysis[/bold]")
         self.console.print(f"Text: {self.params.text[:100]}...")
         self.console.print(f"Label: [{'green' if result.label == 'positive' else 'red' if result.label == 'negative' else 'yellow'}]{result.label}[/]")
         self.console.print(f"Score: {result.score:.2f}")

@@ -1,7 +1,8 @@
 """Creation commands for bots, agents, and tools."""
 
+from typing import Annotated
+
 import typer
-from typing_extensions import Annotated
 
 app = typer.Typer(help="Creation commands for bots, agents, and tools")
 

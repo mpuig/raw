@@ -8,6 +8,7 @@ Tools can be:
 - Programmatic: Created by Claude Code during workflow definition
 """
 
+import inspect
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
@@ -174,4 +175,59 @@ class Tool(ABC):
             type=ToolEventType.MESSAGE,
             tool=self.name,
             data=data,
+        )
+
+    @classmethod
+    def metadata(cls) -> Any:  # Returns ToolMetadata
+        """Extract metadata for tool introspection.
+
+        Returns comprehensive information about the tool including
+        its name, description, available operations, parameters, and documentation.
+        """
+        from raw_runtime.models import ToolMetadata
+
+        # Extract public methods that could be operations
+        operations = [
+            member_name
+            for member_name, member in inspect.getmembers(cls)
+            if not member_name.startswith("_")
+            and member_name not in ["run", "call", "metadata"]
+            and callable(member)
+        ]
+
+        # Extract parameters from run method signature
+        run_method = cls.run
+        sig = inspect.signature(run_method)
+        parameters: dict[str, Any] = {}
+
+        for param_name, param in sig.parameters.items():
+            if param_name in ("self", "config", "kwargs"):
+                continue
+            param_info: dict[str, Any] = {"type": "any"}
+            if param.annotation != inspect.Parameter.empty:
+                param_info["type"] = str(param.annotation)
+            if param.default != inspect.Parameter.empty:
+                param_info["default"] = param.default
+            parameters[param_name] = param_info
+
+        # Extract docstring from run method if available
+        documentation = inspect.getdoc(run_method) or inspect.getdoc(cls)
+
+        # Check for schema attribute (from decorator)
+        schema_params = {}
+        if hasattr(cls, "schema") and isinstance(cls.schema, dict):
+            schema_params = cls.schema.get("parameters", {})
+
+        # Merge parameters
+        if schema_params:
+            parameters.update(schema_params)
+
+        return ToolMetadata(
+            name=cls.name,
+            description=cls.description,
+            operations=operations,
+            parameters=parameters,
+            version=None,
+            documentation=documentation,
+            triggers=cls.triggers,
         )

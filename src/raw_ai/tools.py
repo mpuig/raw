@@ -1,7 +1,8 @@
 """Convert RAW tools to PydanticAI tools."""
 
 import inspect
-from typing import Any, Callable, get_type_hints
+from collections.abc import Callable
+from typing import Any, get_type_hints
 
 
 def to_ai_tool(func: Callable) -> dict[str, Any]:

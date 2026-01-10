@@ -1,10 +1,10 @@
 """LiteLLM driver implementation for multi-provider LLM support."""
 
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import litellm
-
-from raw_core import LLMChunk, LLMDriver, LLMServiceError
+from raw_core import LLMChunk, LLMServiceError
 
 
 def _accumulate_tool_call_delta(

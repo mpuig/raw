@@ -5,7 +5,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 ModelProvider = Literal["openai", "anthropic", "groq", "ollama"]
 
 
@@ -60,7 +59,6 @@ def get_model(
     Returns:
         Configured PydanticAI Agent
     """
-    from pydantic_ai import Agent
 
     if provider is None:
         if model is None:

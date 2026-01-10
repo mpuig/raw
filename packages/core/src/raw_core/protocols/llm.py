@@ -1,6 +1,7 @@
 """LLM driver protocol for multi-provider support."""
 
-from typing import Any, AsyncIterator, Protocol
+from collections.abc import AsyncIterator
+from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 

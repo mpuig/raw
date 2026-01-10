@@ -1,6 +1,7 @@
 """Event bus protocol for pub/sub messaging."""
 
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 
 class EventBus(Protocol):

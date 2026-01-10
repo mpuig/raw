@@ -163,7 +163,7 @@ class HttpOrchestrator:
         if server_url is None:
             raise ValueError("RAW_SERVER_URL not set and no server_url provided")
         self._server_url = server_url.rstrip("/")
-        self._client: "httpx.Client | None" = None
+        self._client: httpx.Client | None = None
 
     def _get_client(self) -> "httpx.Client":
         """Get or create the HTTP client.

@@ -131,6 +131,119 @@ tools/                    # Tool packages (importable)
 - No comments for self-explanatory code (`# Create directory` before `mkdir()`)
 - Docstrings: one line when possible, no redundant parameter descriptions
 
+## Core Principles (Non-Negotiable)
+
+### 1. Clean Architecture
+
+Follow strict layer separation:
+```
+Presentation → Application → Domain → Infrastructure
+```
+
+**Rules:**
+- Domain layer has ZERO external dependencies
+- Dependencies point inward only
+- All external services use Protocol interfaces
+- 100% dependency injection
+
+### 2. SOLID Principles
+
+Apply all five principles:
+- **S**ingle Responsibility: One class, one reason to change
+- **O**pen/Closed: Extend via protocols, not modification
+- **L**iskov Substitution: Subtypes must be swappable
+- **I**nterface Segregation: Small, focused protocols
+- **D**ependency Inversion: Depend on abstractions
+
+### 3. Test-Driven Development (TDD)
+
+Always follow red-green-refactor:
+
+1. **RED** - Write failing test first
+2. **GREEN** - Write minimal code to pass
+3. **REFACTOR** - Improve while tests pass
+
+**Requirements:**
+- 90%+ test coverage minimum
+- Unit tests for all business logic
+- Integration tests for external systems
+- No code without tests
+
+### 5. Human-Style Documentation
+
+Write like a human, not an LLM.
+
+**Two core principles:**
+1. **Docstrings are concise** - State what the code does in 1-2 sentences. No essays.
+2. **Comments explain "why" not "what"** - Only add comments when the reason isn't obvious from the code itself.
+
+**Avoid these words/phrases:**
+- "pivotal," "crucial," "revolutionary," "groundbreaking"
+- "Moreover," "Furthermore," "It is worth noting"
+- "In conclusion," "In summary," "Overall"
+- "breathtaking," "a testament to," "boasts a rich heritage"
+- "It should be said," "One could argue"
+- "This highlights its significance," "underscoring the influence"
+
+**Good docstring:**
+```python
+def analyze_content(content_id: int) -> AnalysisResult:
+    """Analyze content and extract topics.
+
+    Runs content through LLM and saves topics, sentiment,
+    and summary to database.
+    """
+```
+
+**Bad docstring:**
+```python
+def analyze_content(content_id: int) -> AnalysisResult:
+    """This pivotal function leverages cutting-edge AI to
+    revolutionize content analysis. Moreover, it should be
+    noted that this plays a crucial role in the system.
+    """
+```
+
+**Good comments (explain "why"):**
+```python
+# Twitter API returns max 100 items per request
+page_size = 100
+
+# Check if content exists to avoid duplicate capture
+if self._repository.find_by_twitter_id(tweet.id):
+    return None
+
+# Retry with exponential backoff to handle rate limits
+for attempt in range(3):
+    try:
+        response = self._client.fetch()
+        break
+    except RateLimitError:
+        time.sleep(2 ** attempt)
+```
+
+**Bad comments (explain "what", which is obvious):**
+```python
+# Set page size to 100
+page_size = 100
+
+# Check if content exists
+if self._repository.find_by_twitter_id(tweet.id):
+    return None
+
+# Loop 3 times
+for attempt in range(3):
+    ...
+```
+
+**No comment needed (code is self-documenting):**
+```python
+if content.is_analyzed:
+    return cached_result
+
+user_tweets = [t for t in tweets if t.author == username]
+```
+
 ### Clean code Architecture
 
 Here is a list of software engineering best practices to be applied:

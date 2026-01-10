@@ -4,9 +4,7 @@ Loads configuration from YAML files and environment variables with proper
 validation and type safety using Pydantic.
 """
 
-import os
 from pathlib import Path
-from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field

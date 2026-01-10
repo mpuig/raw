@@ -3,12 +3,9 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from raw.discovery.registry import (
     CompositeRegistry,
     LocalToolRegistry,
-    SearchResult,
     ToolInfo,
     ToolRegistry,
     get_tool_registry,

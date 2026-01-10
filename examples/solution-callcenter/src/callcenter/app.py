@@ -8,7 +8,6 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-
 from raw_bot import BotConfig, ContextManager, ConversationEngine
 from raw_core.protocols import ToolExecutor
 from raw_server import create_app
@@ -198,7 +197,7 @@ def register_voice_routes(app: FastAPI, config: CallCenterConfig) -> None:
 
         # In production, return TwiML to connect to voice pipeline
         # For this example, return basic TwiML
-        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+        twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say>Thank you for calling Acme Corporation. Please wait while we connect you.</Say>
     <Connect>

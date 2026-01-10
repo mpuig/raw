@@ -1,9 +1,5 @@
 """Workflow and tool discovery."""
 
-from raw.discovery.git_fetcher import (
-    FetchResult,
-    GitToolFetcher,
-)
 from raw.discovery.display import (
     console,
     print_draft_created,
@@ -22,6 +18,10 @@ from raw.discovery.display import (
     print_workflow_duplicated,
     print_workflow_list,
     print_workflow_published,
+)
+from raw.discovery.git_fetcher import (
+    FetchResult,
+    GitToolFetcher,
 )
 from raw.discovery.search import (
     is_semantic_available,

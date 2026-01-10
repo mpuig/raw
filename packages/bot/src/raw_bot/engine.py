@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, AsyncIterator, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from raw_core.events import TextChunk, ToolCallEvent, ToolResultEvent, TurnComplete
 from raw_core.protocols import LLMDriver, ToolExecutor

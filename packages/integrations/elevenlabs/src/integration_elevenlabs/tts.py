@@ -1,10 +1,9 @@
 """ElevenLabs TTS service implementation."""
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from elevenlabs import VoiceSettings
 from elevenlabs.client import AsyncElevenLabs
-
 from raw_core import TTSServiceError
 
 

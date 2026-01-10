@@ -1,11 +1,9 @@
 """Redis backend for state management."""
 
-from typing import Any
 
-from pydantic import Field
 from redis.asyncio import ConnectionPool, Redis
 
-from raw_state.backends.base import StateBackend, StateConfig
+from raw_state.backends.base import StateConfig
 
 
 class RedisConfig(StateConfig):

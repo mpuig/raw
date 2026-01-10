@@ -12,8 +12,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, ParamSpec, TypeVar, get_type_hints
 
-from pydantic import BaseModel
-
 from raw_runtime.agentic_cache import AgenticCache
 from raw_runtime.agentic_parser import ResponseParsingError, parse_response
 from raw_runtime.context import get_workflow_context
@@ -47,7 +45,6 @@ class CostLimitExceededError(AgenticStepError):
         if step_name:
             msg = f"Step '{step_name}': {msg}"
         super().__init__(msg)
-
 
 
 # Global file-based cache (initialized lazily)
@@ -107,7 +104,6 @@ def _format_prompt(
         return template.format(context=context)
     except (KeyError, AttributeError) as e:
         raise ValueError(f"Failed to format prompt template: {e}") from e
-
 
 
 def _call_anthropic(

@@ -8,7 +8,6 @@ from typing import Any
 import yaml
 
 from raw.core.schemas import LibrariesConfig, ToolConfig, WorkflowConfig
-from raw.scaffold.template_render import render_tool_template
 
 
 def is_raw_initialized(project_dir: Path | None = None) -> bool:

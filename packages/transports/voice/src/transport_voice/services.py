@@ -14,7 +14,6 @@ from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.services.stt_service import STTService
 from pipecat.services.tts_service import TTSService
 from pydantic import BaseModel
-
 from raw_core.errors import STTServiceError, TTSServiceError
 
 

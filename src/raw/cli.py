@@ -8,7 +8,7 @@ Simplified CLI with 5 core commands:
 - show: View details, logs, and context
 """
 
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.prompt import Prompt
@@ -124,18 +124,18 @@ def init(
 def create(
     name: Annotated[str, typer.Argument(help="Short name (e.g., stock-analysis, fetch_prices)")],
     intent: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--intent", "-i", help="Workflow intent (will prompt if not provided)"),
     ] = None,
     from_workflow: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--from", help="Duplicate from existing workflow ID"),
     ] = None,
     tool: Annotated[
         bool, typer.Option("--tool", "-t", help="Create a reusable tool instead of a workflow")
     ] = False,
     description: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--description", "-d", help="Tool description (required with --tool)"),
     ] = None,
 ) -> None:
@@ -153,7 +153,7 @@ def create(
 def run(
     ctx: typer.Context,
     workflow_id: Annotated[
-        Optional[str],
+        str | None,
         typer.Argument(help="Workflow identifier (full or partial)"),
     ] = None,
     dry: Annotated[
@@ -185,7 +185,7 @@ def run(
 def list_cmd(
     what: Annotated[str, typer.Argument(help="What to list: workflows or tools")] = "workflows",
     search: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--search", "-s", help="Search tools by description"),
     ] = None,
 ) -> None:
@@ -205,7 +205,7 @@ def list_cmd(
 @app.command()
 def show(
     identifier: Annotated[
-        Optional[str],
+        str | None,
         typer.Argument(help="Workflow ID or tool name"),
     ] = None,
     logs: Annotated[

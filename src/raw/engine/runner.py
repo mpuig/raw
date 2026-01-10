@@ -8,7 +8,6 @@ from pathlib import Path
 
 from raw.engine.protocols import ExecutionBackend, RunResult, RunStorage
 
-
 # Default timeout for dry runs (mock data should execute quickly)
 DRY_RUN_TIMEOUT_SECONDS = 60
 

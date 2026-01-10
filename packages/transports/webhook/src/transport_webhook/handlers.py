@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from raw_bot import ConversationEngine
 from raw_core import TextChunk, ToolCallEvent, ToolResultEvent, TurnComplete
 

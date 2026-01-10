@@ -7,7 +7,8 @@ enabling real-time voice conversations with STT, TTS, and VAD.
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
@@ -20,7 +21,6 @@ from pipecat.transports.local.audio import (
     LocalAudioTransportParams,
 )
 from pydantic import BaseModel
-
 from raw_core.errors import ErrorAction, ErrorPolicy, ServiceError, TransportError
 
 from .adapter import EngineProcessor

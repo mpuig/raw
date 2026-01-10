@@ -7,12 +7,13 @@ validation, error handling) while delegating conversation logic to handlers.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Any, Callable
+from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
-from raw_bot import BotConfig, ConversationEngine
+from raw_bot import ConversationEngine
 
 from transport_webhook.handlers import ConversationManager, ConversationState, ConversationStatus
 

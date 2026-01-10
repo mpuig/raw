@@ -1,7 +1,8 @@
 """Onboard command implementation."""
 
-import click
 from pathlib import Path
+
+import click
 
 from raw.discovery.display import console, print_info, print_success, print_warning
 from raw.scaffold.markdown import render_onboard
@@ -39,5 +40,5 @@ def onboard_command() -> None:
         console.print("  Your agent can now read the latest RAW instructions from AGENTS.md.")
         console.print("  Consider running [cyan]raw hooks install[/] for automatic agent context injection.")
     except Exception as e:
-        console.print(f"[red]Error:[/]")
+        console.print("[red]Error:[/]")
         console.print(f"  Failed to write AGENTS.md: {e}")

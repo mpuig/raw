@@ -1,6 +1,5 @@
 """Create command implementation."""
 
-from pathlib import Path
 
 import click
 

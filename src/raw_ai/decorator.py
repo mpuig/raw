@@ -2,7 +2,8 @@
 
 import functools
 import inspect
-from typing import Any, Callable, TypeVar, overload
+from collections.abc import Callable
+from typing import TypeVar
 
 from pydantic import BaseModel
 

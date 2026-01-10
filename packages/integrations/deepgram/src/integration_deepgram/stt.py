@@ -5,7 +5,6 @@ from typing import Any
 from pipecat.frames.frames import Frame
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.deepgram.stt import DeepgramSTTService
-
 from raw_core import STTServiceError
 
 

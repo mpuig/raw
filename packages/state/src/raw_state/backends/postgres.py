@@ -1,12 +1,11 @@
 """PostgreSQL backend for state management."""
 
-import json
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
 from pydantic import Field
 
-from raw_state.backends.base import StateBackend, StateConfig
+from raw_state.backends.base import StateConfig
 
 
 class PostgresConfig(StateConfig):

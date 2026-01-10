@@ -3,9 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from raw.engine import Container, DRY_RUN_TIMEOUT_SECONDS, SubprocessBackend
+from raw.engine import DRY_RUN_TIMEOUT_SECONDS, Container, SubprocessBackend
 from raw.engine.mocks import MockBackend, MockStorage
 from raw.engine.protocols import RunResult
 

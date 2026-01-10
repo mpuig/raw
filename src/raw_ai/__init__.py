@@ -23,8 +23,8 @@ Example:
             return 0
 """
 
+from raw_ai.config import AIConfig, get_model
 from raw_ai.decorator import agent
 from raw_ai.tools import to_ai_tool
-from raw_ai.config import AIConfig, get_model
 
 __all__ = ["agent", "to_ai_tool", "AIConfig", "get_model"]

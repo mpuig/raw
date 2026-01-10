@@ -91,6 +91,20 @@ class LogsInfo(BaseModel):
     stderr: str | None = Field(default=None, description="Path to stderr log")
 
 
+class ToolMetadata(BaseModel):
+    """Metadata about a registered tool for introspection."""
+
+    name: str = Field(..., description="Tool name")
+    description: str = Field(..., description="Tool description")
+    operations: list[str] = Field(default_factory=list, description="Available operations")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Parameter schemas")
+    version: str | None = Field(default=None, description="Tool version")
+    documentation: str | None = Field(default=None, description="Detailed documentation")
+    triggers: list[str] = Field(
+        default_factory=list, description="Event triggers this tool handles"
+    )
+
+
 class Manifest(BaseModel):
     """Complete manifest for a workflow run.
 

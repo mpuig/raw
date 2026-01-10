@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from raw.discovery.display import console, print_error, print_info
+from raw.discovery.display import console, print_error
 from raw.discovery.git_fetcher import GitToolFetcher
 from raw.discovery.registry import get_tool_registry, set_tool_registry
 
@@ -44,7 +44,7 @@ def install_command(
 
     tool_info = registry.get_tool(name or result.tool_path.name) if result.tool_path else None
 
-    console.print(f"[green]✓[/] Tool installed successfully!")
+    console.print("[green]✓[/] Tool installed successfully!")
     console.print()
     console.print(f"[bold]Name:[/] {tool_info.name if tool_info else result.tool_path.name}")
     console.print(f"[bold]Path:[/] {result.tool_path}")

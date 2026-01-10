@@ -4,9 +4,9 @@ import os
 from unittest.mock import patch
 
 from raw_ai.config import (
-    AIConfig,
     API_KEY_ENV_VARS,
     DEFAULT_MODELS,
+    AIConfig,
     get_api_key,
     get_model,
 )

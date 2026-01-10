@@ -18,7 +18,6 @@ from pipecat.frames.frames import (
     UserStoppedSpeakingFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-
 from raw_core.events import TextChunk, ToolCallEvent, ToolResultEvent, TurnComplete
 
 if TYPE_CHECKING:

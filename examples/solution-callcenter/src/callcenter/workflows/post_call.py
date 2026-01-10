@@ -8,7 +8,6 @@ Automatically processes completed calls to:
 5. Log metrics for analytics
 """
 
-import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -326,7 +325,7 @@ class PostCallWorkflow:
         # In production, create ticket in your ticketing system (Zendesk, Jira, etc.)
         ticket_data = {
             "customer_id": customer_id,
-            "subject": f"Follow-up needed: Low satisfaction call",
+            "subject": "Follow-up needed: Low satisfaction call",
             "description": summary or "Call summary not available.",
             "priority": "high" if call_data.get("sentiment", 1) < 0.3 else "medium",
             "tags": ["low-satisfaction", "ai-escalation"],

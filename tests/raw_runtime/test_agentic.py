@@ -191,10 +191,24 @@ class TestAgenticDecorator:
         )
         set_workflow_context(self.ctx)
 
-        # Reset global cache between tests
+        # Reset global cache between tests and clear cache directory
+        import shutil
+        import tempfile
+        from pathlib import Path
+
         from raw_runtime import agentic
 
         agentic._cache = None
+
+        # Clear file-based cache (both .raw and tempdir)
+        cache_dir = Path(".raw/cache/agentic")
+        if cache_dir.exists():
+            shutil.rmtree(cache_dir)
+
+        # Also clear temp directory cache
+        temp_cache_dir = Path(tempfile.gettempdir()) / "raw_cache" / "agentic"
+        if temp_cache_dir.exists():
+            shutil.rmtree(temp_cache_dir)
 
     def teardown_method(self) -> None:
         """Clean up test context."""
@@ -404,25 +418,25 @@ class TestAgenticDecorator:
             mock_anthropic.return_value = mock_client
 
             @agentic(
-                prompt="Process: {context.text}",
+                prompt="Unique cache test prompt XYZ123: {context.text}",  # Very unique
                 model="claude-3-5-haiku-20241022",
                 cache=True,
             )
-            def process(text: str) -> str:
+            def process_unique_xyz(text: str) -> str:
                 pass
 
             # First call - should hit API
-            result1 = process("test")
+            result1 = process_unique_xyz("value_one_xyz")
             assert result1 == "result"
             assert mock_client.messages.create.call_count == 1
 
             # Second call with same input - should use cache
-            result2 = process("test")
+            result2 = process_unique_xyz("value_one_xyz")
             assert result2 == "result"
             assert mock_client.messages.create.call_count == 1  # Not called again
 
             # Third call with different input - should hit API
-            result3 = process("different")
+            result3 = process_unique_xyz("value_two_xyz")
             assert result3 == "result"
             assert mock_client.messages.create.call_count == 2
 

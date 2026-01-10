@@ -357,9 +357,7 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
                 span.set_attribute("http.status_code", response.status_code)
 
                 # Set span status based on HTTP status
-                if response.status_code >= 500:
-                    span.set_status(Status(StatusCode.ERROR))
-                elif response.status_code >= 400:
+                if response.status_code >= 500 or response.status_code >= 400:
                     span.set_status(Status(StatusCode.ERROR))
                 else:
                     span.set_status(Status(StatusCode.OK))

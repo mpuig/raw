@@ -149,10 +149,10 @@ def _add_skill_permission(settings: dict, skill_name: str) -> None:
     """Add skill permission to settings."""
     if "permissions" not in settings:
         settings["permissions"] = {}
-    
+
     if "allow" not in settings["permissions"]:
         settings["permissions"]["allow"] = []
-    
+
     permission = f"Skill({skill_name})"
     if permission not in settings["permissions"]["allow"]:
         settings["permissions"]["allow"].append(permission)
@@ -176,7 +176,7 @@ def hooks_install_command() -> None:
         hooks_config[event] = _add_raw_hook(hooks_config[event])
 
     installed_skills = _install_skills()
-    
+
     # Auto-allow installed skills
     for skill in installed_skills:
         _add_skill_permission(settings, skill)

@@ -115,9 +115,9 @@ def main() -> int:
     try:
         skill_dir = init_skill(args.name, args.description, Path(args.output))
         print(f"Created skill: {skill_dir}")
-        print(f"  SKILL.md")
-        print(f"  references/guide.md")
-        print(f"  scripts/")
+        print("  SKILL.md")
+        print("  references/guide.md")
+        print("  scripts/")
         return 0
     except (ValueError, FileExistsError) as e:
         print(f"Error: {e}")

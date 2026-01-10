@@ -49,19 +49,6 @@ from raw_runtime.bus import (
     LocalEventBus,
     NullEventBus,
 )
-from raw_runtime.tools import (
-    Tool,
-    ToolEvent,
-    ToolEventType,
-    ToolRegistry,
-    ToolResult,
-    get_tool,
-    get_tool_registry,
-    register_tool,
-    set_tool_registry,
-    tool,
-    register_builtin_tools,
-)
 from raw_runtime.connection import (
     ServerConnection,
     get_connection,
@@ -167,6 +154,19 @@ from raw_runtime.telemetry import (
     log_event,
     log_metric,
     set_telemetry_sink,
+)
+from raw_runtime.tools import (
+    Tool,
+    ToolEvent,
+    ToolEventType,
+    ToolRegistry,
+    ToolResult,
+    get_tool,
+    get_tool_registry,
+    register_builtin_tools,
+    register_tool,
+    set_tool_registry,
+    tool,
 )
 from raw_runtime.triggers import (
     TriggerEvent,

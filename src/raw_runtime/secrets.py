@@ -19,7 +19,6 @@ from raw_runtime.drivers.secrets import (
 )
 from raw_runtime.protocols.secrets import SecretProvider
 
-
 # Backward-compatible accessors that delegate to RuntimeContainer
 
 

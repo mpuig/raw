@@ -19,10 +19,10 @@ from raw_core.errors import (
     PlatformError,
     ServiceError,
     STTServiceError,
-    TTSServiceError,
     ToolExecutionError,
     ToolNotFoundError,
     ToolTimeoutError,
+    TTSServiceError,
 )
 from raw_core.events import (
     Event,

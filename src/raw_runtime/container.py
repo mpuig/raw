@@ -19,7 +19,7 @@ Usage:
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from raw_runtime.drivers.orchestrator import HttpOrchestrator, LocalOrchestrator
 from raw_runtime.drivers.secrets import (
