@@ -15,6 +15,7 @@ from rich.prompt import Prompt
 
 from raw import __version__
 from raw.commands import (
+    build_command,
     create_command,
     hooks_install_command,
     init_command,
@@ -25,6 +26,7 @@ from raw.commands import (
     search_command,
     show_command,
     trigger_command,
+    validate_command,
 )
 from raw.discovery.display import console
 from raw.discovery.workflow import list_workflows
@@ -147,6 +149,82 @@ def create(
         raw create new-workflow --from existing-workflow
     """
     create_command(name, intent, from_workflow, tool, description, scaffold=False)
+
+
+@app.command()
+def build(
+    workflow_id: Annotated[
+        str | None,
+        typer.Argument(help="Workflow identifier to build"),
+    ] = None,
+    max_iterations: Annotated[
+        int | None,
+        typer.Option("--max-iterations", help="Maximum plan-execute cycles (default: 10)"),
+    ] = None,
+    max_minutes: Annotated[
+        int | None,
+        typer.Option("--max-minutes", help="Maximum wall time in minutes (default: 30)"),
+    ] = None,
+    resume: Annotated[
+        str | None,
+        typer.Option("--resume", help="Resume from specific build ID"),
+    ] = None,
+    last: Annotated[
+        bool, typer.Option("--last", help="Resume from last build")
+    ] = False,
+) -> None:
+    """Build a workflow using the agentic builder loop.
+
+    The builder implements plan → execute → verify → iterate cycles:
+    1. Plan mode: Analyze requirements, create numbered plan (read-only)
+    2. Execute mode: Apply changes to workflow and tools
+    3. Verify: Run quality gates (validate, dry, optional tests)
+    4. Iterate: If gates fail, feed failures into next plan cycle
+
+    Exit Codes:
+        0 - Success (all gates passed)
+        1 - Failed (gates failed or budget exceeded)
+        2 - Stuck (unable to make progress after iterations)
+
+    Examples:
+        raw build my-workflow                    # Build with defaults
+        raw build my-workflow --max-iterations 5 # Limit cycles
+        raw build my-workflow --max-minutes 15   # Time budget
+        raw build --resume build-abc123          # Resume specific build
+        raw build --last                         # Resume last build
+    """
+    if resume and last:
+        typer.echo("Error: Cannot use both --resume and --last")
+        raise typer.Exit(1)
+
+    build_command(workflow_id, max_iterations, max_minutes, resume, last, _prompt_workflow_selection)
+
+
+@app.command()
+def validate(
+    workflow_id: Annotated[
+        str | None,
+        typer.Argument(help="Workflow identifier to validate"),
+    ] = None,
+) -> None:
+    """Validate workflow structure and dependencies.
+
+    Checks:
+    - run.py exists and is valid Python
+    - PEP 723 metadata is present and correct
+    - Imported tools exist in tools/ directory
+    - Workflow uses BaseWorkflow pattern
+    - run() method is implemented
+
+    Exit Codes:
+        0 - Validation passed
+        1 - Validation failed (errors found)
+
+    Examples:
+        raw validate my-workflow     # Validate specific workflow
+        raw validate                 # Prompt for workflow
+    """
+    validate_command(workflow_id, _prompt_workflow_selection)
 
 
 @app.command()

@@ -5,6 +5,7 @@ The cli.py module handles Click decorators and argument parsing,
 then delegates to these command functions.
 """
 
+from raw.commands.build import build_command
 from raw.commands.create import create_command
 from raw.commands.hooks import hooks_install_command, hooks_uninstall_command
 from raw.commands.init import init_command
@@ -20,8 +21,10 @@ from raw.commands.serve import serve_command
 from raw.commands.show import show_command
 from raw.commands.stop import stop_command
 from raw.commands.trigger import trigger_command
+from raw.commands.validate import validate_command
 
 __all__ = [
+    "build_command",
     "create_command",
     "hooks_install_command",
     "hooks_uninstall_command",
@@ -39,4 +42,5 @@ __all__ = [
     "stop_command",
     "trigger_command",
     "uninstall_command",
+    "validate_command",
 ]
